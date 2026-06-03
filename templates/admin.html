@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم - Besho Tool</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+        
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .login-box {
+            background: linear-gradient(145deg, #1e1e2e, #161622);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 40px;
+            width: 320px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .login-box h2 {
+            margin-bottom: 25px;
+            color: #fff;
+            font-size: 1.4rem;
+        }
+        
+        .login-box input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            background: #0d0d15;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .login-box button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4a4a5a, #3a3a4a);
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .login-box button:hover {
+            background: linear-gradient(135deg, #5a5a6a, #4a4a5a);
+            transform: translateY(-2px);
+        }
+        
+        .hidden { display: none !important; }
+        
+        .admin-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(145deg, #1e1e2e, #161622);
+            border-radius: 16px;
+            border: 1px solid #2a2a3a;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            color: #fff;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4a9f4a, #3a8f3a);
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5ab05a, #4a9f4a);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #4a4a5a, #3a3a4a);
+            color: #fff;
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #5a5a6a, #4a4a5a);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #9f4a4a, #8f3a3a);
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #b05a5a, #9f4a4a);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #9f8a4a, #8f7a3a);
+            color: #fff;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(145deg, #1e1e2e, #161622);
+            border: 1px solid #2a2a3a;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .stat-card .label {
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .stat-card.active .number { color: #4a9f4a; }
+        .stat-card.frozen .number { color: #9f8a4a; }
+        .stat-card.expired .number { color: #9f4a4a; }
+        
+        .table-container {
+            background: linear-gradient(145deg, #1e1e2e, #161622);
+            border: 1px solid #2a2a3a;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #2a2a3a;
+        }
+        
+        .table-header h2 {
+            font-size: 1.2rem;
+            color: #fff;
+        }
+        
+        .search-box {
+            padding: 10px 15px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            background: #0d0d15;
+            color: #fff;
+            width: 250px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: right;
+            border-bottom: 1px solid #2a2a3a;
+        }
+        
+        th {
+            background: #161622;
+            color: #888;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        
+        tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        
+        .license-key {
+            font-family: monospace;
+            background: #0d0d15;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: #7dd;
+            cursor: pointer;
+        }
+        
+        .license-key:hover {
+            background: #1a1a2a;
+        }
+        
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background: rgba(74, 159, 74, 0.2);
+            color: #6fc06f;
+        }
+        
+        .status-frozen {
+            background: rgba(159, 138, 74, 0.2);
+            color: #cfb06f;
+        }
+        
+        .status-expired {
+            background: rgba(159, 74, 74, 0.2);
+            color: #cf6f6f;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: linear-gradient(145deg, #1e1e2e, #161622);
+            border: 1px solid #333;
+            border-radius: 16px;
+            padding: 30px;
+            width: 400px;
+            max-width: 90%;
+        }
+        
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #fff;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            background: #0d0d15;
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-actions button {
+            flex: 1;
+        }
+        
+        .ip-info {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        
+        .ip-info span {
+            color: #7dd;
+            font-family: monospace;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #888;
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            border-radius: 10px;
+            color: #fff;
+            z-index: 2000;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .toast.success { background: #4a9f4a; }
+        .toast.error { background: #9f4a4a; }
+        
+        @keyframes slideUp {
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        
+        .refresh-spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Overlay -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <h2>لوحة تحكم المسؤول</h2>
+            <input type="password" id="adminPassword" placeholder="كلمة السر" onkeypress="if(event.key==='Enter')adminLogin()">
+            <button onclick="adminLogin()">دخول</button>
+        </div>
+    </div>
+    
+    <!-- Admin Panel -->
+    <div class="admin-container hidden" id="adminPanel">
+        <div class="header">
+            <h1>لوحة تحكم Besho Tool</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="refreshData()">
+                    <span id="refreshIcon">↻</span> تحديث
+                </button>
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    + إنشاء مفتاح جديد
+                </button>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="number" id="totalCount">0</div>
+                <div class="label">إجمالي الاشتراكات</div>
+            </div>
+            <div class="stat-card active">
+                <div class="number" id="activeCount">0</div>
+                <div class="label">نشط</div>
+            </div>
+            <div class="stat-card frozen">
+                <div class="number" id="frozenCount">0</div>
+                <div class="label">مجمد</div>
+            </div>
+            <div class="stat-card expired">
+                <div class="number" id="expiredCount">0</div>
+                <div class="label">منتهي</div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <div class="table-header">
+                <h2>الاشتراكات</h2>
+                <input type="text" class="search-box" placeholder="بحث..." oninput="filterTable(this.value)">
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>المفتاح</th>
+                        <th>المستخدم</th>
+                        <th>الحالة</th>
+                        <th>تاريخ الانتهاء</th>
+                        <th>IP</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="subscriptionsTable">
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <h3>جاري التحميل...</h3>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Create Modal -->
+    <div class="modal-overlay hidden" id="createModal">
+        <div class="modal">
+            <h3>إنشاء اشتراك جديد</h3>
+            <div class="form-group">
+                <label>اسم المستخدم</label>
+                <input type="text" id="newUserName" placeholder="اختياري">
+            </div>
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="newUserEmail" placeholder="اختياري">
+            </div>
+            <div class="form-group">
+                <label>مدة الاشتراك (بالأيام)</label>
+                <input type="number" id="newDays" value="30" min="1">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="hideCreateModal()">إلغاء</button>
+                <button class="btn btn-primary" onclick="createSubscription()">إنشاء</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Modal -->
+    <div class="modal-overlay hidden" id="editModal">
+        <div class="modal">
+            <h3>تعديل الاشتراك</h3>
+            <input type="hidden" id="editSubId">
+            <div class="form-group">
+                <label>اسم المستخدم</label>
+                <input type="text" id="editUserName">
+            </div>
+            <div class="form-group">
+                <label>البريد الإلكتروني</label>
+                <input type="email" id="editUserEmail">
+            </div>
+            <div class="form-group">
+                <label>تمديد الاشتراك (بالأيام من الآن)</label>
+                <input type="number" id="editDays" value="30" min="1">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="editResetIp"> إعادة تعيين الـ IP (يسمح بتسجيل دخول من جهاز جديد)
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="hideEditModal()">إلغاء</button>
+                <button class="btn btn-primary" onclick="saveEdit()">حفظ</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let subscriptions = [];
+        let isLoggedIn = false;
+        
+        // Check if already logged in (session)
+        if (sessionStorage.getItem('adminLoggedIn') === 'true') {
+            isLoggedIn = true;
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            refreshData();
+        }
+        
+        async function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            try {
+                const resp = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    isLoggedIn = true;
+                    sessionStorage.setItem('adminLoggedIn', 'true');
+                    document.getElementById('loginOverlay').classList.add('hidden');
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    refreshData();
+                } else {
+                    showToast(data.reason || 'كلمة السر غير صحيحة', 'error');
+                }
+            } catch (e) {
+                showToast('خطأ في الاتصال', 'error');
+            }
+        }
+        
+        async function refreshData() {
+            const icon = document.getElementById('refreshIcon');
+            icon.classList.add('refresh-spin');
+            
+            try {
+                const resp = await fetch('/api/admin/subscriptions');
+                const data = await resp.json();
+                if (data.ok) {
+                    subscriptions = data.subscriptions;
+                    renderTable();
+                    updateStats();
+                } else {
+                    showToast(data.reason || 'خطأ في جلب البيانات', 'error');
+                }
+            } catch (e) {
+                showToast('خطأ في الاتصال', 'error');
+            }
+            
+            setTimeout(() => icon.classList.remove('refresh-spin'), 500);
+        }
+        
+        function updateStats() {
+            const now = new Date();
+            let active = 0, frozen = 0, expired = 0;
+            
+            subscriptions.forEach(sub => {
+                const expiresAt = new Date(sub.expires_at);
+                if (sub.admin_frozen) {
+                    frozen++;
+                } else if (!sub.is_active || expiresAt < now) {
+                    expired++;
+                } else {
+                    active++;
+                }
+            });
+            
+            document.getElementById('totalCount').textContent = subscriptions.length;
+            document.getElementById('activeCount').textContent = active;
+            document.getElementById('frozenCount').textContent = frozen;
+            document.getElementById('expiredCount').textContent = expired;
+        }
+        
+        function renderTable(filter = '') {
+            const tbody = document.getElementById('subscriptionsTable');
+            const filtered = subscriptions.filter(sub => {
+                if (!filter) return true;
+                const search = filter.toLowerCase();
+                return (
+                    sub.license_key.toLowerCase().includes(search) ||
+                    (sub.user_name || '').toLowerCase().includes(search) ||
+                    (sub.user_email || '').toLowerCase().includes(search) ||
+                    (sub.allowed_ip || '').includes(search)
+                );
+            });
+            
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <h3>لا توجد اشتراكات</h3>
+                            <p>قم بإنشاء اشتراك جديد للبدء</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            const now = new Date();
+            tbody.innerHTML = filtered.map(sub => {
+                const expiresAt = new Date(sub.expires_at);
+                const isExpired = expiresAt < now;
+                const isFrozen = sub.admin_frozen;
+                
+                let status, statusClass;
+                if (isFrozen) {
+                    status = 'مجمد';
+                    statusClass = 'status-frozen';
+                } else if (isExpired || !sub.is_active) {
+                    status = 'منتهي';
+                    statusClass = 'status-expired';
+                } else {
+                    status = 'نشط';
+                    statusClass = 'status-active';
+                }
+                
+                const daysLeft = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+                const expiresText = isExpired ? 'منتهي' : `${daysLeft} يوم`;
+                
+                return `
+                    <tr>
+                        <td>
+                            <span class="license-key" onclick="copyKey('${sub.license_key}')" title="انقر للنسخ">
+                                ${sub.license_key}
+                            </span>
+                        </td>
+                        <td>
+                            ${sub.user_name || sub.user_email || '-'}
+                        </td>
+                        <td>
+                            <span class="status-badge ${statusClass}">${status}</span>
+                        </td>
+                        <td>
+                            ${expiresText}
+                            <br><small style="color:#666">${expiresAt.toLocaleDateString('ar-EG')}</small>
+                        </td>
+                        <td class="ip-info">
+                            ${sub.allowed_ip ? `<span>${sub.allowed_ip}</span>` : '<span style="color:#666">-</span>'}
+                        </td>
+                        <td>
+                            <div class="actions">
+                                <button class="btn btn-secondary btn-sm" onclick="showEditModal('${sub.id}')">تعديل</button>
+                                ${isFrozen 
+                                    ? `<button class="btn btn-primary btn-sm" onclick="toggleFreeze('${sub.id}', false)">تفعيل</button>`
+                                    : `<button class="btn btn-warning btn-sm" onclick="toggleFreeze('${sub.id}', true)">تجميد</button>`
+                                }
+                                <button class="btn btn-danger btn-sm" onclick="deleteSub('${sub.id}')">حذف</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function filterTable(value) {
+            renderTable(value);
+        }
+        
+        function copyKey(key) {
+            navigator.clipboard.writeText(key);
+            showToast('تم نسخ المفتاح', 'success');
+        }
+        
+        function showCreateModal() {
+            document.getElementById('createModal').classList.remove('hidden');
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserEmail').value = '';
+            document.getElementById('newDays').value = '30';
+        }
+        
+        function hideCreateModal() {
+            document.getElementById('createModal').classList.add('hidden');
+        }
+        
+        async function createSubscription() {
+            const userName = document.getElementById('newUserName').value;
+            const userEmail = document.getElementById('newUserEmail').value;
+            const days = document.getElementById('newDays').value;
+            
+            try {
+                const resp = await fetch('/api/admin/create_subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_name: userName, user_email: userEmail, days })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    hideCreateModal();
+                    showToast('تم إنشاء الاشتراك بنجاح', 'success');
+                    // Show the new key
+                    if (data.subscription && data.subscription.license_key) {
+                        setTimeout(() => {
+                            if (confirm(`المفتاح الجديد:\n\n${data.subscription.license_key}\n\nهل تريد نسخه؟`)) {
+                                navigator.clipboard.writeText(data.subscription.license_key);
+                                showToast('تم نسخ المفتاح', 'success');
+                            }
+                        }, 500);
+                    }
+                    refreshData();
+                } else {
+                    showToast(data.reason || 'خطأ في الإنشاء', 'error');
+                }
+            } catch (e) {
+                showToast('خطأ في الاتصال', 'error');
+            }
+        }
+        
+        function showEditModal(subId) {
+            const sub = subscriptions.find(s => s.id === subId);
+            if (!sub) return;
+            
+            document.getElementById('editSubId').value = subId;
+            document.getElementById('editUserName').value = sub.user_name || '';
+            document.getElementById('editUserEmail').value = sub.user_email || '';
+            document.getElementById('editDays').value = '30';
+            document.getElementById('editResetIp').checked = false;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        
+        function hideEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+        
+        async function saveEdit() {
+            const subId = document.getElementById('editSubId').value;
+            const userName = document.getElementById('editUserName').value;
+            const userEmail = document.getElementById('editUserEmail').value;
+            const days = document.getElementById('editDays').value;
+            const resetIp = document.getElementById('editResetIp').checked;
+            
+            try {
+                const resp = await fetch('/api/admin/update_subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        id: subId, 
+                        user_name: userName, 
+                        user_email: userEmail, 
+                        days,
+                        reset_ip: resetIp
+                    })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    hideEditModal();
+                    showToast('تم تحديث الاشتراك', 'success');
+                    refreshData();
+                } else {
+                    showToast(data.reason || 'خطأ في التحديث', 'error');
+                }
+            } catch (e) {
+                showToast('خطأ في الاتصال', 'error');
+            }
+        }
+        
+        async function toggleFreeze(subId, freeze) {
+            try {
+                const resp = await fetch('/api/admin/update_subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: subId, admin_frozen: freeze })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    showToast(freeze ? 'تم تجميد الاشتراك' : 'تم تفعيل الاشتراك', 'success');
+                    refreshData();
+                } else {
+                    showToast(data.reason || 'خطأ', 'error');
+                }
+            } catch (e) {
+                showToast('خطأ في الاتصال', 'error');
+            }
+        }
+        
+        async function deleteSub(subId) {
+            if (!confirm('هل أنت متأكد من حذف هذا الاشتراك؟')) return;
+            
+            try {
+                const resp = await fetch('/api/admin/delete_subscription', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: subId })
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    showToast('تم حذف الاشتراك', 'success');
+                    refreshData();
+                } else {
+                    showToast(data.reason || 'خطأ في الحذف', 'error');
+                }
+            } catch (e) {
+                showToast('خطأ في الاتصال', 'error');
+            }
+        }
+        
+        function showToast(message, type = 'success') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meta Ads Tool</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Noto Sans Arabic', 'Segoe UI', sans-serif; }
+  body { font-size: 13px; background: #0d0d0d; min-height: 100vh; }
+  .loader{border:2px solid #3a3a3a;border-top:2px solid #6b7280;border-radius:50%;width:14px;height:14px;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle}
+  @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+  .tab-btn{transition:all .2s}
+  .fade{animation:fadeIn .2s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  input,select,textarea{font-size:12px!important}
+  .field{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:8px 12px;width:100%;color:#d1d5db;outline:none;transition:all .2s}
+  .field:focus{border-color:#4b5563;box-shadow:0 0 0 2px rgba(75,85,99,0.15)}
+  .field::placeholder{color:#4b5563}
+  .btn{font-weight:500;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;transition:all .2s;border:none}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+  .btn:active{transform:translateY(0)}
+  .btn-green{background:linear-gradient(135deg,#374151,#4b5563);color:#d1fae5}
+  .btn-blue{background:linear-gradient(135deg,#374151,#4b5563);color:#bfdbfe}
+  .btn-purple{background:linear-gradient(135deg,#374151,#4b5563);color:#ddd6fe}
+  .btn-red{background:linear-gradient(135deg,#374151,#4b5563);color:#fecaca}
+  .btn-gray{background:linear-gradient(135deg,#262626,#333333);color:#9ca3af}
+  .btn-orange{background:linear-gradient(135deg,#374151,#4b5563);color:#fed7aa}
+  .card-box{background:#141414;border:1px solid #1f1f1f;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;max-height:100px;overflow-y:auto}
+  .info{background:rgba(75,85,99,0.1);border-right:3px solid #4b5563;padding:8px 12px;border-radius:6px;font-size:11px;color:#9ca3af}
+  .seg{display:flex;border:1px solid #2a2a2a;border-radius:6px;overflow:hidden;background:#151515}
+  .seg-btn{flex:1;text-align:center;padding:8px;font-size:11px;cursor:pointer;color:#6b7280;transition:all .2s}
+  .seg-btn.active{background:linear-gradient(135deg,#374151,#4b5563);color:#e5e7eb}
+  .seg-btn:hover:not(.active){background:#1f1f1f}
+  .acc-badge{background:rgba(75,85,99,0.15);border:1px solid #374151;border-radius:6px;padding:4px 12px;font-size:11px;color:#9ca3af;display:inline-block}
+  
+  /* Tool Container - Fixed Size */
+  .tool-container{width:520px;height:620px;display:flex;flex-direction:column;background:linear-gradient(180deg,#161616 0%,#121212 100%);border:1px solid #1f1f1f;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.5);position:relative;overflow:hidden}
+  .tool-header{flex-shrink:0;padding:16px 20px;border-bottom:1px solid #1f1f1f}
+  .tool-tabs{flex-shrink:0;padding:0 20px}
+  .tool-content{flex:1;overflow-y:auto;padding:16px 20px;min-height:0}
+  .tool-content::-webkit-scrollbar{width:4px}
+  .tool-content::-webkit-scrollbar-track{background:#141414;border-radius:4px}
+  .tool-content::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px}
+  .tool-content::-webkit-scrollbar-thumb:hover{background:#3a3a3a}
+  
+  /* Login Overlay - Small centered inside tool */
+  .login-overlay{position:absolute;inset:0;background:rgba(13,13,13,0.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:100;border-radius:12px}
+  .login-box{background:linear-gradient(180deg,#1a1a1a,#141414);border:1px solid #262626;border-radius:12px;padding:24px;width:280px;box-shadow:0 15px 30px rgba(0,0,0,0.4)}
+  
+  /* Lock icon animation */
+  @keyframes lockPulse{0%,100%{opacity:0.6}50%{opacity:1}}
+  .lock-icon{animation:lockPulse 2s ease-in-out infinite}
+  
+  /* Tab panel fixed height */
+  .tab-panel{min-height:380px}
+</style>
+</head>
+<body class="text-gray-400 flex items-center justify-center p-4">
+
+<!-- Main Tool Container -->
+<div id="main_tool" class="tool-container">
+
+  <!-- Login Overlay (inside tool) -->
+  <div id="login_overlay" class="login-overlay">
+    <div class="login-box">
+      <div class="text-center mb-5">
+        <div class="text-3xl mb-2 lock-icon">🔒</div>
+        <h2 class="text-base font-semibold text-gray-200">تسجيل الدخول</h2>
+        <p class="text-gray-500 text-xs mt-1">أدخل مفتاح الترخيص للدخول</p>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <label class="text-gray-500 text-xs mb-1 block">مفتاح الترخيص</label>
+          <input id="license_key" type="text" class="field text-center tracking-wider text-sm" placeholder="XXXX-XXXX-XXXX-XXXX" onkeypress="if(event.key==='Enter')checkLicense()">
+        </div>
+        <button onclick="checkLicense()" class="btn btn-blue w-full py-2.5">دخول</button>
+        <div id="login_error" class="text-red-400 text-xs text-center hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="tool-header">
+    <div class="flex justify-between items-center">
+      <div>
+        <h1 class="text-base font-semibold text-gray-200">Meta Ads Tool</h1>
+        <div class="text-xs text-gray-600 mt-0.5">أداة إدارة إعلانات فيسبوك</div>
+      </div>
+      <div class="flex gap-1.5 items-center">
+        <button id="btn_ar" onclick="setLang('ar')" class="btn btn-gray text-xs px-2.5 py-1.5">AR</button>
+        <button id="btn_en" onclick="setLang('en')" class="btn btn-gray text-xs px-2.5 py-1.5">EN</button>
+        <button onclick="resetAll()" class="btn btn-gray text-xs px-2.5 py-1.5">↻</button>
+      </div>
+    </div>
+    
+    <!-- User Info -->
+    <div id="user_info" class="mt-3 flex items-center justify-between bg-[#111] rounded-lg p-2 border border-[#1f1f1f]">
+      <div class="flex items-center gap-2">
+        <span class="text-gray-600 text-xs">المستخدم:</span>
+        <span id="user_name" class="text-gray-300 text-xs font-medium">—</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <span id="expires_at" class="text-gray-600 text-xs"></span>
+      </div>
+    </div>
+
+    <!-- Active account badge -->
+    <div id="acc_badge_wrap" class="mt-2 hidden">
+      <span class="text-gray-600 text-xs" id="lbl_active_acc">الحساب النشط:</span>
+      <span id="acc_badge" class="acc-badge mr-2">—</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tool-tabs py-3 border-b border-[#1f1f1f]">
+    <div class="flex gap-1">
+      <button onclick="showTab('t1')" id="btn-t1" class="tab-btn text-gray-300 border-b-2 border-gray-500 pb-1 font-medium text-xs px-3">الحساب</button>
+      <button onclick="showTab('t2')" id="btn-t2" class="tab-btn text-gray-600 hover:text-gray-400 pb-1 text-xs px-3">البطاقات</button>
+      <button onclick="showTab('t3')" id="btn-t3" class="tab-btn text-gray-600 hover:text-gray-400 pb-1 text-xs px-3">إنشاء إعلان</button>
+    </div>
+  </div>
+
+  <!-- Tool Content (Scrollable, Fixed Height) -->
+  <div class="tool-content">
+
+    <!-- Tab 1: Account -->
+    <div id="t1" class="fade tab-panel">
+      <div class="space-y-3">
+        <div>
+          <label id="lbl_cookies" class="text-gray-500 text-xs mb-1 block">الكوكيز (JSON)</label>
+          <textarea id="cookies" class="field" rows="3" placeholder='[{"name":"c_user","value":"..."}]'></textarea>
+        </div>
+        <div>
+          <label id="lbl_ad_account" class="text-gray-500 text-xs mb-1 block">الحساب الإعلاني (رابط أو act_xxx)</label>
+          <input id="ad_account_input" class="field" placeholder="https://www.facebook.com/adsmanager/?act=... أو act_1234567890">
+          <div id="lbl_ad_account_hint" class="text-gray-600 text-xs mt-1">الأداة ستفتح صفحته لاستخراج التوكن</div>
+        </div>
+        <div>
+          <label id="lbl_proxy" class="text-gray-500 text-xs mb-1 block">بروكسي (اختياري)</label>
+          <input id="proxy" class="field" placeholder="host:port:user:pass">
+        </div>
+        <button id="btn_verify" onclick="verifyAndExtract()" class="btn btn-green w-full">التحقق واستخراج التوكن</button>
+        <div id="verify_result" class="mt-2"></div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Cards -->
+    <div id="t2" class="fade hidden tab-panel">
+      <div class="space-y-3">
+        <div class="seg">
+          <div id="seg-auto" class="seg-btn active" onclick="setCardMode('auto')">ربط تلقائي</div>
+          <div id="seg-manual" class="seg-btn" onclick="setCardMode('manual')">ربط يدوي</div>
+        </div>
+
+        <div id="mode-auto">
+          <div class="info">الأداة ستختار كارت عشوائياً من المصدر وتربطه تلقائياً</div>
+        </div>
+
+        <div id="mode-manual" class="hidden">
+          <label class="text-gray-500 text-xs mb-1 block">البطاقات (card|mm|yyyy|cvv|name)</label>
+          <textarea id="cards_text" class="field font-mono" rows="4" placeholder="4111111111111111|12|2025|123|John Doe"></textarea>
+        </div>
+
+        <button id="btn_add_cards" onclick="addCards()" class="btn btn-purple w-full">بدء الربط</button>
+        <div id="cards_log" class="card-box hidden"></div>
+        <div class="info">فيسبوك يحمي صفحة الفواتير — قد تحتاج للتحقق يدوياً</div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Create Ad -->
+    <div id="t3" class="fade hidden tab-panel">
+      <div class="space-y-3">
+        <div>
+          <label id="lbl_post_url" class="text-gray-500 text-xs mb-1 block">رابط المنشور</label>
+          <input id="post_url" class="field" placeholder="https://www.facebook.com/page/posts/123..." oninput="scheduleExtract()">
+          <div id="post_status" class="text-xs text-gray-600 mt-1 hidden"></div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label id="lbl_budget" class="text-gray-500 text-xs mb-1 block">ميزانية $/يوم</label>
+            <input type="number" id="budget" class="field" value="10" min="1">
+          </div>
+          <div>
+            <label id="lbl_days" class="text-gray-500 text-xs mb-1 block">الأيام</label>
+            <input type="number" id="days" class="field" value="0" min="0" placeholder="0=بلا حد">
+          </div>
+          <div>
+            <label id="lbl_objective" class="text-gray-500 text-xs mb-1 block">الهدف</label>
+            <select id="objective" class="field" onchange="onObjectiveChange()">
+              <option value="OUTCOME_ENGAGEMENT">تفاعل</option>
+              <option value="OUTCOME_TRAFFIC">زيارات</option>
+              <option value="OUTCOME_AWARENESS">وعي</option>
+              <option value="OUTCOME_LEADS">عملاء</option>
+              <option value="OUTCOME_SALES">مبيعات</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="traffic_url_box" class="hidden">
+          <label id="lbl_traffic_url" class="text-gray-500 text-xs mb-1 block">رابط الوجهة</label>
+          <input id="traffic_url" class="field" placeholder="https://example.com">
+        </div>
+
+        <div id="budget_total" class="text-xs text-gray-600 text-center hidden"></div>
+
+        <div class="border-t border-[#1f1f1f] pt-3">
+          <label id="lbl_targeting" class="text-gray-500 text-xs mb-2 block font-medium">الاستهداف</label>
+          <div class="mb-2">
+            <label id="lbl_saved_audience" class="text-gray-600 text-xs mb-1 block">ID جمهور محفوظ (اختياري)</label>
+            <input id="saved_audience_id" class="field" placeholder="اتركه فارغاً للاستهداف اليدوي" oninput="onAudienceChange()">
+          </div>
+          <div id="manual_targeting" class="space-y-2">
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label id="lbl_country" class="text-gray-600 text-xs mb-1 block">الدولة</label>
+                <input id="country" class="field" placeholder="EG" maxlength="2" value="EG">
+              </div>
+              <div>
+                <label id="lbl_age" class="text-gray-600 text-xs mb-1 block">السن</label>
+                <div class="flex gap-1">
+                  <input type="number" id="age_min" class="field" value="18" min="13" max="65">
+                  <input type="number" id="age_max" class="field" value="65" min="13" max="65">
+                </div>
+              </div>
+              <div>
+                <label id="lbl_gender" class="text-gray-600 text-xs mb-1 block">النوع</label>
+                <select id="gender" class="field">
+                  <option value="0">الكل</option>
+                  <option value="1">ذكور</option>
+                  <option value="2">إناث</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="btn_create" onclick="createAd()" class="btn btn-blue flex-1">إنشاء</button>
+          <button id="btn_activate" onclick="activateAd()" class="btn btn-orange flex-1 hidden">تنشيط</button>
+        </div>
+        <div id="ad_result" class="card-box hidden text-xs"></div>
+        <div class="flex gap-2">
+          <button id="btn_verify_page" onclick="verifyPageAccess()" class="btn btn-gray flex-1 text-xs">صلاحيات الصفحة</button>
+          <button id="btn_verify_ad" onclick="verifyAdInPage()" class="btn btn-gray flex-1 text-xs hidden">ظهور الإعلان</button>
+        </div>
+        <div id="verify_result_ad" class="card-box hidden text-xs mt-2"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let STATE = {
+  cookies: null, proxy: null, token: null, adAccount: null,
+  cardMode: 'auto', lastAdId: null, lastCampId: null, lastAdsetId: null,
+  extractedPageId: '', extractedPostId: '', extractTimer: null, lang: 'ar',
+  licenseKey: null, userName: null, expiresAt: null, allowedIp: null, sessionLocked: false
+};
+
+// Check stored license on load
+window.addEventListener('load', async () => {
+  setLang('ar');
+  showTab('t1');
+  updateBudgetTotal();
+  
+  const stored = localStorage.getItem('license_data');
+  if(stored) {
+    try {
+      const data = JSON.parse(stored);
+      if(data.licenseKey && data.expiresAt) {
+        // Verify license is still valid with server (checks IP, expiry, admin_frozen)
+        await verifyStoredLicense(data.licenseKey);
+      }
+    } catch(e) {
+      console.error('License check failed:', e);
+    }
+  }
+});
+
+async function verifyStoredLicense(licenseKey) {
+  try {
+    const res = await fetch('/api/check_license', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({license_key: licenseKey, verify_session: true})
+    }).then(r => r.json());
+    
+    if(res.ok) {
+      STATE.licenseKey = licenseKey;
+      STATE.userName = res.user_name || 'مستخدم';
+      STATE.expiresAt = res.expires_at;
+      STATE.allowedIp = res.allowed_ip;
+      STATE.sessionLocked = true;
+      showTool();
+    } else {
+      // License invalid, expired, frozen, or IP changed
+      localStorage.removeItem('license_data');
+      showLoginError(res.reason || 'انتهت الجلسة');
+    }
+  } catch(e) {
+    // Network error - don't logout, just show error
+    console.error('Verify error:', e);
+  }
+}
+
+async function checkLicense() {
+  const key = document.getElementById('license_key').value.trim();
+  const errorEl = document.getElementById('login_error');
+  
+  if(!key) {
+    errorEl.textContent = 'أدخل مفتاح الترخيص';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  errorEl.classList.add('hidden');
+  
+  try {
+    const res = await fetch('/api/check_license', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({license_key: key})
+    }).then(r => r.json());
+    
+    if(res.ok) {
+      STATE.licenseKey = key;
+      STATE.userName = res.user_name || 'مستخدم';
+      STATE.expiresAt = res.expires_at;
+      STATE.allowedIp = res.allowed_ip;
+      STATE.sessionLocked = true;
+      localStorage.setItem('license_data', JSON.stringify({
+        licenseKey: key, userName: STATE.userName, expiresAt: STATE.expiresAt
+      }));
+      showTool();
+    } else {
+      errorEl.textContent = res.reason || 'مفتاح غير صالح';
+      errorEl.classList.remove('hidden');
+    }
+  } catch(e) {
+    errorEl.textContent = 'خطأ في الاتصال';
+    errorEl.classList.remove('hidden');
+  }
+}
+
+function showLoginError(msg) {
+  const errorEl = document.getElementById('login_error');
+  errorEl.textContent = msg;
+  errorEl.classList.remove('hidden');
+}
+
+function showTool() {
+  document.getElementById('login_overlay').classList.add('hidden');
+  document.getElementById('user_name').textContent = STATE.userName || '—';
+  if(STATE.expiresAt) {
+    const d = new Date(STATE.expiresAt);
+    document.getElementById('expires_at').textContent = 'ينتهي: ' + d.toLocaleDateString('ar-EG');
+  }
+}
+
+function logout() {
+  // Only allow logout if subscription expired or admin frozen
+  // This is enforced server-side, but we also prevent UI logout
+  alert('لا يمكن تسجيل الخروج إلا عند انتهاء الاشتراك');
+}
+
+function resetAll(){
+  if(confirm(STATE.lang==='ar' ? 'مسح البيانات المؤقتة؟' : 'Clear temp data?')) {
+    // Don't clear license, just clear session data
+    STATE.cookies = null;
+    STATE.token = null;
+    STATE.adAccount = null;
+    document.getElementById('cookies').value = '';
+    document.getElementById('proxy').value = '';
+    document.getElementById('ad_account_input').value = '';
+    document.getElementById('verify_result').innerHTML = '';
+    updateAccBadge();
+  }
+}
+
+// ── اللغات ──
+const LABELS = {
+  ar: {
+    lbl_cookies: 'الكوكيز (JSON)',
+    lbl_ad_account: 'الحساب الإعلاني (رابط أو act_xxx)',
+    lbl_ad_account_hint: 'الأداة ستفتح صفحته لاستخراج التوكن',
+    lbl_proxy: 'بروكسي (اختياري)',
+    btn_verify: 'التحقق واستخراج التوكن',
+    lbl_active_acc: 'الحساب النشط:',
+    btn_add_cards: 'بدء الربط',
+    lbl_post_url: 'رابط المنشور',
+    lbl_budget: 'ميزانية $/يوم',
+    lbl_days: 'الأيام',
+    lbl_objective: 'الهدف',
+    lbl_traffic_url: 'رابط الوجهة',
+    lbl_targeting: 'الاستهداف',
+    lbl_saved_audience: 'ID جمهور محفوظ (اختياري)',
+    lbl_country: 'الدولة',
+    lbl_age: 'السن',
+    lbl_gender: 'النوع',
+    btn_create: 'إنشاء',
+    btn_activate: 'تنشيط',
+    tab1: 'الحساب', tab2: 'البطاقات', tab3: 'إنشاء إعلان',
+    seg_auto: 'ربط تلقائي', seg_manual: 'ربط يدوي',
+    opt_all: 'الكل', opt_male: 'ذكور', opt_female: 'إناث',
+    no_cookies: 'أدخل الكوكيز', no_account: 'أدخل الحساب الإعلاني أولاً',
+    no_cards: 'أدخل البطاقات', no_post: 'أدخل رابط المنشور',
+    no_token: 'استخرج التوكن أولاً', no_traffic: 'أدخل رابط الوجهة',
+    creating: 'جاري الإنشاء...', linking_auto: 'جاري الربط...',
+    linking_manual: 'جاري ربط البطاقات...'
+  },
+  en: {
+    lbl_cookies: 'Cookies (JSON)',
+    lbl_ad_account: 'Ad Account (URL or act_xxx)',
+    lbl_ad_account_hint: 'The tool opens its page to extract the token',
+    lbl_proxy: 'Proxy (optional)',
+    btn_verify: 'Verify & Extract Token',
+    lbl_active_acc: 'Active account:',
+    btn_add_cards: 'Start linking',
+    lbl_post_url: 'Post URL',
+    lbl_budget: 'Budget $/day',
+    lbl_days: 'Days',
+    lbl_objective: 'Objective',
+    lbl_traffic_url: 'Destination URL',
+    lbl_targeting: 'Targeting',
+    lbl_saved_audience: 'Saved Audience ID (optional)',
+    lbl_country: 'Country',
+    lbl_age: 'Age',
+    lbl_gender: 'Gender',
+    btn_create: 'Create',
+    btn_activate: 'Activate',
+    tab1: 'Account', tab2: 'Cards', tab3: 'Create Ad',
+    seg_auto: 'Auto-link', seg_manual: 'Manual',
+    opt_all: 'All', opt_male: 'Male', opt_female: 'Female',
+    no_cookies: 'Enter cookies', no_account: 'Enter ad account first',
+    no_cards: 'Enter cards', no_post: 'Enter post URL',
+    no_token: 'Extract token first', no_traffic: 'Enter destination URL',
+    creating: 'Creating...', linking_auto: 'Linking...',
+    linking_manual: 'Linking cards...'
+  }
+};
+
+function t(k){ return LABELS[STATE.lang]?.[k] || k; }
+
+function translatePage(){
+  document.getElementById('lbl_cookies').textContent = t('lbl_cookies');
+  document.getElementById('lbl_ad_account').textContent = t('lbl_ad_account');
+  document.getElementById('lbl_ad_account_hint').textContent = t('lbl_ad_account_hint');
+  document.getElementById('lbl_proxy').textContent = t('lbl_proxy');
+  document.getElementById('btn_verify').textContent = t('btn_verify');
+  document.getElementById('lbl_active_acc').textContent = t('lbl_active_acc');
+  document.getElementById('btn_add_cards').textContent = t('btn_add_cards');
+  document.getElementById('lbl_post_url').textContent = t('lbl_post_url');
+  document.getElementById('lbl_budget').textContent = t('lbl_budget');
+  document.getElementById('lbl_days').textContent = t('lbl_days');
+  document.getElementById('lbl_objective').textContent = t('lbl_objective');
+  document.getElementById('lbl_traffic_url').textContent = t('lbl_traffic_url');
+  document.getElementById('lbl_targeting').textContent = t('lbl_targeting');
+  document.getElementById('lbl_saved_audience').textContent = t('lbl_saved_audience');
+  document.getElementById('lbl_country').textContent = t('lbl_country');
+  document.getElementById('lbl_age').textContent = t('lbl_age');
+  document.getElementById('lbl_gender').textContent = t('lbl_gender');
+  document.getElementById('btn_create').textContent = t('btn_create');
+  document.getElementById('btn_activate').textContent = t('btn_activate');
+  document.getElementById('btn-t1').textContent = t('tab1');
+  document.getElementById('btn-t2').textContent = t('tab2');
+  document.getElementById('btn-t3').textContent = t('tab3');
+  document.getElementById('seg-auto').textContent = t('seg_auto');
+  document.getElementById('seg-manual').textContent = t('seg_manual');
+  document.documentElement.lang = STATE.lang;
+  document.documentElement.dir = STATE.lang === 'ar' ? 'rtl' : 'ltr';
+  document.getElementById('btn_ar').className = 'btn btn-gray text-xs px-2.5 py-1.5'+(STATE.lang==='ar'?' ring-1 ring-gray-500':'');
+  document.getElementById('btn_en').className = 'btn btn-gray text-xs px-2.5 py-1.5'+(STATE.lang==='en'?' ring-1 ring-gray-500':'');
+}
+
+function setLang(lang){ STATE.lang = lang; translatePage(); }
+
+function showTab(id){
+  ['t1','t2','t3'].forEach(tab => {
+    document.getElementById(tab).classList.add('hidden');
+    document.getElementById('btn-'+tab).className = 'tab-btn text-gray-600 hover:text-gray-400 pb-1 text-xs px-3';
+  });
+  document.getElementById(id).classList.remove('hidden');
+  document.getElementById('btn-'+id).className = 'tab-btn text-gray-300 border-b-2 border-gray-500 pb-1 font-medium text-xs px-3';
+}
+
+function setCardMode(m){
+  STATE.cardMode = m;
+  document.getElementById('seg-auto').className = 'seg-btn'+(m==='auto'?' active':'');
+  document.getElementById('seg-manual').className = 'seg-btn'+(m==='manual'?' active':'');
+  document.getElementById('mode-auto').classList.toggle('hidden', m!=='auto');
+  document.getElementById('mode-manual').classList.toggle('hidden', m!=='manual');
+}
+
+function onObjectiveChange(){
+  document.getElementById('traffic_url_box').classList.toggle('hidden', document.getElementById('objective').value !== 'OUTCOME_TRAFFIC');
+}
+
+function onAudienceChange(){
+  const v = document.getElementById('saved_audience_id').value.trim();
+  document.getElementById('manual_targeting').classList.toggle('hidden', v.length > 0);
+}
+
+function updateBudgetTotal(){
+  const b = parseFloat(document.getElementById('budget')?.value||0);
+  const d = parseInt(document.getElementById('days')?.value||0);
+  const el = document.getElementById('budget_total');
+  if(el && d>0){ el.textContent=`الإجمالي: ${(b*d).toFixed(2)}$ لمدة ${d} يوم`; el.classList.remove('hidden'); }
+  else if(el) el.classList.add('hidden');
+}
+document.addEventListener('input', e => { if(['budget','days'].includes(e.target.id)) updateBudgetTotal(); });
+
+function updateAccBadge(){
+  if(STATE.adAccount){
+    document.getElementById('acc_badge_wrap').classList.remove('hidden');
+    document.getElementById('acc_badge').textContent = STATE.adAccount;
+  } else {
+    document.getElementById('acc_badge_wrap').classList.add('hidden');
+  }
+}
+
+function scheduleExtract(){
+  clearTimeout(STATE.extractTimer);
+  const url = document.getElementById('post_url').value.trim();
+  if(!url) return;
+  STATE.extractTimer = setTimeout(() => doExtract(url), 800);
+}
+
+async function doExtract(url){
+  const status = document.getElementById('post_status');
+  status.classList.remove('hidden');
+  status.textContent = 'جاري الاستخراج...';
+  status.className = 'text-xs text-gray-500 mt-1';
+  try {
+    const res = await fetch('/api/extract_post_info',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({url, token:STATE.token})}).then(r=>r.json());
+    if(res.ok){
+      STATE.extractedPageId = res.page_id||'';
+      STATE.extractedPostId = res.post_id||'';
+      if(res.page_id && res.post_id){
+        status.textContent = `Page: ${res.page_id} | Post: ${res.post_id}`;
+        status.className = 'text-xs text-green-400 mt-1';
+      } else {
+        status.textContent = `Post: ${res.post_id||'؟'}`;
+        status.className = 'text-xs text-yellow-400 mt-1';
+      }
+    } else {
+      status.textContent = res.reason;
+      status.className = 'text-xs text-red-400 mt-1';
+    }
+  } catch(e){
+    status.textContent = 'خطأ';
+    status.className = 'text-xs text-red-400 mt-1';
+  }
+}
+
+async function verifyAndExtract(){
+  STATE.cookies = document.getElementById('cookies').value.trim();
+  STATE.proxy = document.getElementById('proxy').value.trim();
+  const accInput = document.getElementById('ad_account_input').value.trim();
+  if(!STATE.cookies) return alert(t('no_cookies'));
+  const resultEl = document.getElementById('verify_result');
+  resultEl.innerHTML = '<span class="loader"></span> جاري الاستخراج...';
+  try {
+    const res = await fetch('/api/verify_and_extract',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cookies:STATE.cookies, proxy:STATE.proxy, ad_account:accInput})}).then(r=>r.json());
+    if(res.ok){
+      STATE.token = res.token;
+      // استخرج act_id فقط من أي صيغة (URL أو نص أو act_xxx)
+      const rawAcc = res.ad_account || accInput || '';
+      const actMatch = rawAcc.match(/act[_=](\d+)/) || rawAcc.match(/(\d{10,})/);
+      STATE.adAccount = actMatch ? `act_${actMatch[1]}` : (rawAcc || null);
+      updateAccBadge();
+      const tokenPreview = STATE.token ? STATE.token.substring(0,20)+'...' : 'لم يُستخرج';
+      const accDisplay = STATE.adAccount || 'لم يُستخرج';
+      resultEl.innerHTML = `
+        <div class="bg-[#1a1f1a] rounded-lg p-3 text-xs space-y-1 border border-[#2a3a2a]">
+          <div>التوكن: <span class="text-green-400">${tokenPreview}</span></div>
+          <div class="text-gray-500">${res.name || ''}</div>
+          <div>الحساب: <span class="text-gray-300">${accDisplay}</span></div>
+        </div>`;
+    } else {
+      resultEl.innerHTML = `<div class="text-red-400 text-xs">${res.reason}</div>`;
+    }
+  } catch(e){
+    resultEl.innerHTML = `<div class="text-red-400 text-xs">${e}</div>`;
+  }
+}
+
+async function addCards(){
+  if(!STATE.adAccount) return alert(t('no_account'));
+  const log = document.getElementById('cards_log');
+  let body;
+  if(STATE.cardMode==='auto'){
+    body = {cookies:STATE.cookies, proxy:STATE.proxy, ad_account:STATE.adAccount, mode:'auto'};
+  } else {
+    const cards = document.getElementById('cards_text').value.trim();
+    if(!cards) return alert(t('no_cards'));
+    body = {cookies:STATE.cookies, proxy:STATE.proxy, ad_account:STATE.adAccount, mode:'manual', cards_text:cards};
+  }
+  log.classList.remove('hidden');
+  log.innerHTML = '<span class="loader"></span> '+(STATE.cardMode==='auto' ? t('linking_auto') : t('linking_manual'));
+  const res = await fetch('/api/add_cards',{method:'POST',
+    headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}).then(r=>r.json());
+  if(res.ok){
+    log.innerHTML = res.results.map(r=>
+      `<div class="${r.status.includes('❌')?'text-red-400':r.status.includes('⚠️')?'text-yellow-400':'text-green-400'}">${r.card} → ${r.status}</div>`
+    ).join('');
+  } else {
+    log.innerHTML = `<div class="text-red-400">${res.reason}</div>`;
+  }
+}
+
+async function createAd(){
+  const log = document.getElementById('ad_result');
+  if(!STATE.adAccount) return alert(t('no_account'));
+  if(!STATE.extractedPageId || !STATE.extractedPostId) return alert(t('no_post'));
+  if(!STATE.token) return alert(t('no_token'));
+  const obj = document.getElementById('objective').value;
+  const trafficUrl = document.getElementById('traffic_url')?.value||'';
+  if(obj==='OUTCOME_TRAFFIC' && !trafficUrl) return alert(t('no_traffic'));
+  const savedAudience = document.getElementById('saved_audience_id').value.trim();
+  let targeting;
+  if(savedAudience){
+    targeting = {custom_audiences:[{id:savedAudience}]};
+  } else {
+    const country = (document.getElementById('country').value.trim()||'EG').toUpperCase();
+    const age_min = parseInt(document.getElementById('age_min').value)||18;
+    const age_max = parseInt(document.getElementById('age_max').value)||65;
+    const genderV = parseInt(document.getElementById('gender').value);
+    targeting = {geo_locations:{countries:[country]}, age_min, age_max};
+    if(genderV>0) targeting.genders = [genderV];
+  }
+  log.classList.remove('hidden');
+  document.getElementById('btn_activate').classList.add('hidden');
+  document.getElementById('btn_verify_ad').classList.add('hidden');
+  log.innerHTML = '<span class="loader"></span> '+t('creating');
+  const res = await fetch('/api/create_ad',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      cookies:STATE.cookies, proxy:STATE.proxy, token:STATE.token, ad_account:STATE.adAccount,
+      page_id:STATE.extractedPageId, post_id:STATE.extractedPostId,
+      budget:document.getElementById('budget').value, days:document.getElementById('days').value,
+      objective:obj, traffic_url:trafficUrl, targeting
+    })}).then(r=>r.json());
+  if(res.ok){
+    STATE.lastAdId = res.ad_id;
+    STATE.lastCampId = res.campaign_id;
+    STATE.lastAdsetId = res.adset_id;
+    log.innerHTML = `<div class="text-yellow-400 font-medium">${res.message}</div>
+      <div class="text-gray-500 mt-1 text-xs">Campaign: ${res.campaign_id}</div>
+      <div class="text-gray-500 text-xs">Ad: ${res.ad_id}</div>`;
+    document.getElementById('btn_activate').classList.remove('hidden');
+    document.getElementById('btn_verify_ad').classList.remove('hidden');
+  } else {
+    log.innerHTML = `<div class="text-red-400">${res.reason}</div>`;
+  }
+}
+
+async function verifyPageAccess(){
+  if(!STATE.token || !STATE.extractedPageId) return alert('استخرج التوكن ورابط المنشور أولاً');
+  const log = document.getElementById('verify_result_ad');
+  log.classList.remove('hidden');
+  log.innerHTML = '<span class="loader"></span> جاري التحقق...';
+  const res = await fetch('/api/verify_page_access',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token:STATE.token, page_id:STATE.extractedPageId})}).then(r=>r.json());
+  if(res.ok){
+    log.innerHTML = `<div class="text-green-400 font-medium">الصفحة: ${res.page_name}</div>
+      <div class="text-gray-500 mt-1 text-xs">يمكن النشر: ${res.can_post?'نعم':'لا'}</div>`;
+  } else {
+    log.innerHTML = `<div class="text-red-400">${res.reason}</div>`;
+  }
+}
+
+async function verifyAdInPage(){
+  if(!STATE.lastAdId || !STATE.extractedPageId) return alert('أنشئ الإعلان أولاً');
+  const log = document.getElementById('verify_result_ad');
+  log.classList.remove('hidden');
+  log.innerHTML = '<span class="loader"></span> جاري التحقق...';
+  const res = await fetch('/api/verify_ad_in_page',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({cookies:STATE.cookies, proxy:STATE.proxy, page_id:STATE.extractedPageId, ad_id:STATE.lastAdId})}).then(r=>r.json());
+  if(res.ok){
+    log.innerHTML = `<div class="text-green-400 font-medium">${res.message}</div>`;
+  } else {
+    log.innerHTML = `<div class="text-yellow-400">${res.reason}</div>`;
+  }
+}
+
+async function activateAd(){
+  if(!STATE.lastAdId) return alert('أنشئ الإعلان أولاً');
+  const log = document.getElementById('ad_result');
+  log.innerHTML += '<br><span class="loader"></span> جاري التنشيط...';
+  const res = await fetch('/api/activate_ad',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token:STATE.token, ad_id:STATE.lastAdId, campaign_id:STATE.lastCampId, adset_id:STATE.lastAdsetId})}).then(r=>r.json());
+  if(res.ok){
+    log.innerHTML = `<div class="text-green-400 font-medium">${res.message}</div>
+      <div class="text-gray-500 mt-1 text-xs">Ad ID: ${STATE.lastAdId}</div>`;
+    document.getElementById('btn_activate').classList.add('hidden');
+  } else {
+    log.innerHTML += `<br><div class="text-red-400">${res.reason}</div>`;
+  }
+}
+</script>
+</body>
+</html>
