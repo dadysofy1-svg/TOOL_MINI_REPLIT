@@ -1095,11 +1095,11 @@ async def create_ad(request: Request):
         daily_budget = int(float(budget) * 100)
 
         # ─── 1) إنشاء الحملة (form-encoded) ───
-        camp_r = requests.post(f"{base}/{act}/campaigns", data={
+        camp_r = requests.post(f"{base}/{act}/campaigns", json={
             "name": f"Campaign_{post_id[:30]}",
             "objective": objective,
             "status": "PAUSED",
-            "special_ad_categories": "[]",
+            "special_ad_categories": [],
             "access_token": token
         }, timeout=15).json()
         if "error" in camp_r:
@@ -1107,24 +1107,29 @@ async def create_ad(request: Request):
         campaign_id = camp_r.get("id")
 
         # ─── 2) إنشاء AdSet ───
-        adset_data = {
+        if objective == "OUTCOME_TRAFFIC" and traffic_url:
+            opt_goal = "LINK_CLICKS"
+            billing_ev = "LINK_CLICKS"
+
+        adset_body = {
             "name": f"AdSet_{post_id[:30]}",
             "campaign_id": campaign_id,
-            "daily_budget": str(daily_budget),
+            "daily_budget": daily_budget,
             "billing_event": billing_ev,
             "optimization_goal": opt_goal,
-            "targeting": json.dumps(targeting),
+            "targeting": targeting,
             "status": "PAUSED",
-            "access_token": token
         }
         if days and days > 0:
             end_dt = datetime.utcnow() + timedelta(days=days)
-            adset_data["end_time"] = end_dt.strftime("%Y-%m-%dT%H:%M:%S+0000")
-        if objective == "OUTCOME_TRAFFIC" and traffic_url:
-            adset_data["optimization_goal"] = "LINK_CLICKS"
-            adset_data["billing_event"] = "LINK_CLICKS"
+            adset_body["end_time"] = end_dt.strftime("%Y-%m-%dT%H:%M:%S+0000")
 
-        adset_r = requests.post(f"{base}/{act}/adsets", data=adset_data, timeout=15).json()
+        adset_r = requests.post(
+            f"{base}/{act}/adsets",
+            params={"access_token": token},
+            json=adset_body,
+            timeout=15
+        ).json()
         if "error" in adset_r:
             return {"ok": False, "reason": f"خطأ إنشاء المجموعة: {adset_r['error'].get('message', str(adset_r['error']))}"}
         adset_id = adset_r.get("id")
@@ -1135,23 +1140,31 @@ async def create_ad(request: Request):
         else:
             story_spec = {"page_id": page_id, "post_id": post_id}
 
-        creative_r = requests.post(f"{base}/{act}/adcreatives", data={
-            "name": f"Creative_{post_id[:30]}",
-            "object_story_spec": json.dumps(story_spec),
-            "access_token": token
-        }, timeout=15).json()
+        creative_r = requests.post(
+            f"{base}/{act}/adcreatives",
+            params={"access_token": token},
+            json={
+                "name": f"Creative_{post_id[:30]}",
+                "object_story_spec": story_spec,
+            },
+            timeout=15
+        ).json()
         if "error" in creative_r:
             return {"ok": False, "reason": f"خطأ إنشاء الكريتيف: {creative_r['error'].get('message', str(creative_r['error']))}"}
         creative_id = creative_r.get("id")
 
         # ─── 4) إنشاء الإعلان ───
-        ad_r = requests.post(f"{base}/{act}/ads", data={
-            "name": f"Ad_{post_id[:30]}",
-            "adset_id": adset_id,
-            "creative": json.dumps({"creative_id": creative_id}),
-            "status": "PAUSED",
-            "access_token": token
-        }, timeout=15).json()
+        ad_r = requests.post(
+            f"{base}/{act}/ads",
+            params={"access_token": token},
+            json={
+                "name": f"Ad_{post_id[:30]}",
+                "adset_id": adset_id,
+                "creative": {"creative_id": creative_id},
+                "status": "PAUSED",
+            },
+            timeout=15
+        ).json()
         if "error" in ad_r:
             return {"ok": False, "reason": f"خطأ إنشاء الإعلان: {ad_r['error'].get('message', str(ad_r['error']))}"}
         ad_id = ad_r.get("id")
