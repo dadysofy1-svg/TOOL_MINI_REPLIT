@@ -34,8 +34,6 @@
   .seg-btn.active{background:linear-gradient(135deg,#374151,#4b5563);color:#e5e7eb}
   .seg-btn:hover:not(.active){background:#1f1f1f}
   .acc-badge{background:rgba(75,85,99,0.15);border:1px solid #374151;border-radius:6px;padding:4px 12px;font-size:11px;color:#9ca3af;display:inline-block}
-  
-  /* Tool Container - Fixed Size */
   .tool-container{width:520px;height:620px;display:flex;flex-direction:column;background:linear-gradient(180deg,#161616 0%,#121212 100%);border:1px solid #1f1f1f;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.5);position:relative;overflow:hidden}
   .tool-header{flex-shrink:0;padding:16px 20px;border-bottom:1px solid #1f1f1f}
   .tool-tabs{flex-shrink:0;padding:0 20px}
@@ -44,25 +42,18 @@
   .tool-content::-webkit-scrollbar-track{background:#141414;border-radius:4px}
   .tool-content::-webkit-scrollbar-thumb{background:#2a2a2a;border-radius:4px}
   .tool-content::-webkit-scrollbar-thumb:hover{background:#3a3a3a}
-  
-  /* Login Overlay - Small centered inside tool */
   .login-overlay{position:absolute;inset:0;background:rgba(13,13,13,0.95);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:100;border-radius:12px}
   .login-box{background:linear-gradient(180deg,#1a1a1a,#141414);border:1px solid #262626;border-radius:12px;padding:24px;width:280px;box-shadow:0 15px 30px rgba(0,0,0,0.4)}
-  
-  /* Lock icon animation */
   @keyframes lockPulse{0%,100%{opacity:0.6}50%{opacity:1}}
   .lock-icon{animation:lockPulse 2s ease-in-out infinite}
-  
-  /* Tab panel fixed height */
   .tab-panel{min-height:380px}
 </style>
 </head>
 <body class="text-gray-400 flex items-center justify-center p-4">
 
-<!-- Main Tool Container -->
 <div id="main_tool" class="tool-container">
 
-  <!-- Login Overlay (inside tool) -->
+  <!-- Login Overlay -->
   <div id="login_overlay" class="login-overlay">
     <div class="login-box">
       <div class="text-center mb-5">
@@ -95,7 +86,6 @@
       </div>
     </div>
     
-    <!-- User Info -->
     <div id="user_info" class="mt-3 flex items-center justify-between bg-[#111] rounded-lg p-2 border border-[#1f1f1f]">
       <div class="flex items-center gap-2">
         <span class="text-gray-600 text-xs">المستخدم:</span>
@@ -106,7 +96,6 @@
       </div>
     </div>
 
-    <!-- Active account badge -->
     <div id="acc_badge_wrap" class="mt-2 hidden">
       <span class="text-gray-600 text-xs" id="lbl_active_acc">الحساب النشط:</span>
       <span id="acc_badge" class="acc-badge mr-2">—</span>
@@ -122,7 +111,7 @@
     </div>
   </div>
 
-  <!-- Tool Content (Scrollable, Fixed Height) -->
+  <!-- Tool Content -->
   <div class="tool-content">
 
     <!-- Tab 1: Account -->
@@ -169,7 +158,7 @@
       </div>
     </div>
 
-    <!-- Tab 3: Create Ad -->
+    <!-- Tab 3: Create Ad (Modified to use /api/boost_ad) -->
     <div id="t3" class="fade hidden tab-panel">
       <div class="space-y-3">
         <div>
@@ -185,66 +174,33 @@
           </div>
           <div>
             <label id="lbl_days" class="text-gray-500 text-xs mb-1 block">الأيام</label>
-            <input type="number" id="days" class="field" value="0" min="0" placeholder="0=بلا حد">
+            <input type="number" id="days" class="field" value="1" min="1" placeholder="1=يوم واحد, -1=مستمر">
           </div>
           <div>
             <label id="lbl_objective" class="text-gray-500 text-xs mb-1 block">الهدف</label>
-            <select id="objective" class="field" onchange="onObjectiveChange()">
-              <option value="OUTCOME_ENGAGEMENT">تفاعل</option>
-              <option value="OUTCOME_TRAFFIC">زيارات</option>
-              <option value="OUTCOME_AWARENESS">وعي</option>
-              <option value="OUTCOME_LEADS">عملاء</option>
-              <option value="OUTCOME_SALES">مبيعات</option>
+            <select id="objective" class="field">
+              <option value="POST_ENGAGEMENT">تفاعل (POST_ENGAGEMENT)</option>
+              <option value="MESSAGES">رسائل (MESSAGES)</option>
+              <option value="LINK_CLICKS">زيارات (LINK_CLICKS)</option>
+              <option value="PAGE_LIKES">إعجابات (PAGE_LIKES)</option>
             </select>
           </div>
         </div>
 
-        <div id="traffic_url_box" class="hidden">
-          <label id="lbl_traffic_url" class="text-gray-500 text-xs mb-1 block">رابط الوجهة</label>
-          <input id="traffic_url" class="field" placeholder="https://example.com">
-        </div>
-
-        <div id="budget_total" class="text-xs text-gray-600 text-center hidden"></div>
-
         <div class="border-t border-[#1f1f1f] pt-3">
-          <label id="lbl_targeting" class="text-gray-500 text-xs mb-2 block font-medium">الاستهداف</label>
-          <div class="mb-2">
-            <label id="lbl_saved_audience" class="text-gray-600 text-xs mb-1 block">ID جمهور محفوظ (اختياري)</label>
-            <input id="saved_audience_id" class="field" placeholder="اتركه فارغاً للاستهداف اليدوي" oninput="onAudienceChange()">
-          </div>
-          <div id="manual_targeting" class="space-y-2">
-            <div class="grid grid-cols-3 gap-2">
-              <div>
-                <label id="lbl_country" class="text-gray-600 text-xs mb-1 block">الدولة</label>
-                <input id="country" class="field" placeholder="EG" maxlength="2" value="EG">
-              </div>
-              <div>
-                <label id="lbl_age" class="text-gray-600 text-xs mb-1 block">السن</label>
-                <div class="flex gap-1">
-                  <input type="number" id="age_min" class="field" value="18" min="13" max="65">
-                  <input type="number" id="age_max" class="field" value="65" min="13" max="65">
-                </div>
-              </div>
-              <div>
-                <label id="lbl_gender" class="text-gray-600 text-xs mb-1 block">النوع</label>
-                <select id="gender" class="field">
-                  <option value="0">الكل</option>
-                  <option value="1">ذكور</option>
-                  <option value="2">إناث</option>
-                </select>
-              </div>
-            </div>
+          <label class="text-gray-500 text-xs mb-2 block font-medium">الاستهداف (دولة فقط حالياً)</label>
+          <div>
+            <label class="text-gray-600 text-xs mb-1 block">الدولة (رمز ISO2)</label>
+            <input id="country" class="field" placeholder="EG" value="EG">
           </div>
         </div>
 
         <div class="flex gap-2">
-          <button id="btn_create" onclick="createAd()" class="btn btn-blue flex-1">إنشاء</button>
-          <button id="btn_activate" onclick="activateAd()" class="btn btn-orange flex-1 hidden">تنشيط</button>
+          <button id="btn_create" onclick="createAd()" class="btn btn-blue flex-1">إنشاء (Boost)</button>
         </div>
         <div id="ad_result" class="card-box hidden text-xs"></div>
         <div class="flex gap-2">
           <button id="btn_verify_page" onclick="verifyPageAccess()" class="btn btn-gray flex-1 text-xs">صلاحيات الصفحة</button>
-          <button id="btn_verify_ad" onclick="verifyAdInPage()" class="btn btn-gray flex-1 text-xs hidden">ظهور الإعلان</button>
         </div>
         <div id="verify_result_ad" class="card-box hidden text-xs mt-2"></div>
       </div>
@@ -261,127 +217,7 @@ let STATE = {
   licenseKey: null, userName: null, expiresAt: null, allowedIp: null, sessionLocked: false
 };
 
-// Check stored license on load
-window.addEventListener('load', async () => {
-  setLang('ar');
-  showTab('t1');
-  updateBudgetTotal();
-  
-  const stored = localStorage.getItem('license_data');
-  if(stored) {
-    try {
-      const data = JSON.parse(stored);
-      if(data.licenseKey && data.expiresAt) {
-        // Verify license is still valid with server (checks IP, expiry, admin_frozen)
-        await verifyStoredLicense(data.licenseKey);
-      }
-    } catch(e) {
-      console.error('License check failed:', e);
-    }
-  }
-});
-
-async function verifyStoredLicense(licenseKey) {
-  try {
-    const res = await fetch('/api/check_license', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({license_key: licenseKey, verify_session: true})
-    }).then(r => r.json());
-    
-    if(res.ok) {
-      STATE.licenseKey = licenseKey;
-      STATE.userName = res.user_name || 'مستخدم';
-      STATE.expiresAt = res.expires_at;
-      STATE.allowedIp = res.allowed_ip;
-      STATE.sessionLocked = true;
-      showTool();
-    } else {
-      // License invalid, expired, frozen, or IP changed
-      localStorage.removeItem('license_data');
-      showLoginError(res.reason || 'انتهت الجلسة');
-    }
-  } catch(e) {
-    // Network error - don't logout, just show error
-    console.error('Verify error:', e);
-  }
-}
-
-async function checkLicense() {
-  const key = document.getElementById('license_key').value.trim();
-  const errorEl = document.getElementById('login_error');
-  
-  if(!key) {
-    errorEl.textContent = 'أدخل مفتاح الترخيص';
-    errorEl.classList.remove('hidden');
-    return;
-  }
-  
-  errorEl.classList.add('hidden');
-  
-  try {
-    const res = await fetch('/api/check_license', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({license_key: key})
-    }).then(r => r.json());
-    
-    if(res.ok) {
-      STATE.licenseKey = key;
-      STATE.userName = res.user_name || 'مستخدم';
-      STATE.expiresAt = res.expires_at;
-      STATE.allowedIp = res.allowed_ip;
-      STATE.sessionLocked = true;
-      localStorage.setItem('license_data', JSON.stringify({
-        licenseKey: key, userName: STATE.userName, expiresAt: STATE.expiresAt
-      }));
-      showTool();
-    } else {
-      errorEl.textContent = res.reason || 'مفتاح غير صالح';
-      errorEl.classList.remove('hidden');
-    }
-  } catch(e) {
-    errorEl.textContent = 'خطأ في الاتصال';
-    errorEl.classList.remove('hidden');
-  }
-}
-
-function showLoginError(msg) {
-  const errorEl = document.getElementById('login_error');
-  errorEl.textContent = msg;
-  errorEl.classList.remove('hidden');
-}
-
-function showTool() {
-  document.getElementById('login_overlay').classList.add('hidden');
-  document.getElementById('user_name').textContent = STATE.userName || '—';
-  if(STATE.expiresAt) {
-    const d = new Date(STATE.expiresAt);
-    document.getElementById('expires_at').textContent = 'ينتهي: ' + d.toLocaleDateString('ar-EG');
-  }
-}
-
-function logout() {
-  // Only allow logout if subscription expired or admin frozen
-  // This is enforced server-side, but we also prevent UI logout
-  alert('لا يمكن تسجيل الخروج إلا عند انتهاء الاشتراك');
-}
-
-function resetAll(){
-  if(confirm(STATE.lang==='ar' ? 'مسح البيانات المؤقتة؟' : 'Clear temp data?')) {
-    // Don't clear license, just clear session data
-    STATE.cookies = null;
-    STATE.token = null;
-    STATE.adAccount = null;
-    document.getElementById('cookies').value = '';
-    document.getElementById('proxy').value = '';
-    document.getElementById('ad_account_input').value = '';
-    document.getElementById('verify_result').innerHTML = '';
-    updateAccBadge();
-  }
-}
-
-// ── اللغات ──
+// Language texts
 const LABELS = {
   ar: {
     lbl_cookies: 'الكوكيز (JSON)',
@@ -457,14 +293,10 @@ function translatePage(){
   document.getElementById('lbl_budget').textContent = t('lbl_budget');
   document.getElementById('lbl_days').textContent = t('lbl_days');
   document.getElementById('lbl_objective').textContent = t('lbl_objective');
-  document.getElementById('lbl_traffic_url').textContent = t('lbl_traffic_url');
   document.getElementById('lbl_targeting').textContent = t('lbl_targeting');
-  document.getElementById('lbl_saved_audience').textContent = t('lbl_saved_audience');
   document.getElementById('lbl_country').textContent = t('lbl_country');
-  document.getElementById('lbl_age').textContent = t('lbl_age');
-  document.getElementById('lbl_gender').textContent = t('lbl_gender');
   document.getElementById('btn_create').textContent = t('btn_create');
-  document.getElementById('btn_activate').textContent = t('btn_activate');
+  document.getElementById('btn_verify_page').textContent = 'صلاحيات الصفحة';
   document.getElementById('btn-t1').textContent = t('tab1');
   document.getElementById('btn-t2').textContent = t('tab2');
   document.getElementById('btn-t3').textContent = t('tab3');
@@ -495,24 +327,9 @@ function setCardMode(m){
   document.getElementById('mode-manual').classList.toggle('hidden', m!=='manual');
 }
 
-function onObjectiveChange(){
-  document.getElementById('traffic_url_box').classList.toggle('hidden', document.getElementById('objective').value !== 'OUTCOME_TRAFFIC');
-}
-
-function onAudienceChange(){
-  const v = document.getElementById('saved_audience_id').value.trim();
-  document.getElementById('manual_targeting').classList.toggle('hidden', v.length > 0);
-}
-
-function updateBudgetTotal(){
-  const b = parseFloat(document.getElementById('budget')?.value||0);
-  const d = parseInt(document.getElementById('days')?.value||0);
-  const el = document.getElementById('budget_total');
-  if(el && d>0){ el.textContent=`الإجمالي: ${(b*d).toFixed(2)}$ لمدة ${d} يوم`; el.classList.remove('hidden'); }
-  else if(el) el.classList.add('hidden');
-}
-document.addEventListener('input', e => { if(['budget','days'].includes(e.target.id)) updateBudgetTotal(); });
-
+function updateBudgetTotal(){}
+function onObjectiveChange(){}
+function onAudienceChange(){}
 function updateAccBadge(){
   if(STATE.adAccount){
     document.getElementById('acc_badge_wrap').classList.remove('hidden');
@@ -568,13 +385,11 @@ async function verifyAndExtract(){
   try {
     const res = await fetch('/api/verify_and_extract',{method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({cookies:STATE.cookies, proxy:STATE.proxy, ad_account:accInput})}).then(r=>r.json());
+      body:JSON.stringify({cookies:STATE.cookies, proxy:STATE.proxy, billing_url:accInput})}).then(r=>r.json());
     if(res.ok){
       STATE.token = res.token;
-      // استخرج act_id فقط من أي صيغة (URL أو نص أو act_xxx)
-      const rawAcc = res.ad_account || accInput || '';
-      const actMatch = rawAcc.match(/act[_=](\d+)/) || rawAcc.match(/(\d{10,})/);
-      STATE.adAccount = actMatch ? `act_${actMatch[1]}` : (rawAcc || null);
+      const actMatch = (res.ad_account || accInput || '').match(/act[_=](\d+)/) || (res.ad_account || accInput || '').match(/(\d{10,})/);
+      STATE.adAccount = actMatch ? `act_${actMatch[1]}` : (res.ad_account || null);
       updateAccBadge();
       const tokenPreview = STATE.token ? STATE.token.substring(0,20)+'...' : 'لم يُستخرج';
       const accDisplay = STATE.adAccount || 'لم يُستخرج';
@@ -616,49 +431,87 @@ async function addCards(){
   }
 }
 
-async function createAd(){
+// MODIFIED createAd to use /api/boost_ad
+async function createAd() {
   const log = document.getElementById('ad_result');
-  if(!STATE.adAccount) return alert(t('no_account'));
-  if(!STATE.extractedPageId || !STATE.extractedPostId) return alert(t('no_post'));
-  if(!STATE.token) return alert(t('no_token'));
-  const obj = document.getElementById('objective').value;
-  const trafficUrl = document.getElementById('traffic_url')?.value||'';
-  if(obj==='OUTCOME_TRAFFIC' && !trafficUrl) return alert(t('no_traffic'));
-  const savedAudience = document.getElementById('saved_audience_id').value.trim();
-  let targeting;
-  if(savedAudience){
-    targeting = {custom_audiences:[{id:savedAudience}]};
-  } else {
-    const country = (document.getElementById('country').value.trim()||'EG').toUpperCase();
-    const age_min = parseInt(document.getElementById('age_min').value)||18;
-    const age_max = parseInt(document.getElementById('age_max').value)||65;
-    const genderV = parseInt(document.getElementById('gender').value);
-    targeting = {geo_locations:{countries:[country]}, age_min, age_max};
-    if(genderV>0) targeting.genders = [genderV];
-  }
+  if (!STATE.extractedPageId || !STATE.extractedPostId) return alert(t('no_post'));
+  if (!STATE.token) return alert(t('no_token'));
+
+  const budget = document.getElementById('budget').value;
+  const days = parseInt(document.getElementById('days').value) || 1;
+  const objective = document.getElementById('objective').value;
+  const countries = [document.getElementById('country').value.trim().toUpperCase() || 'EG'];
+
   log.classList.remove('hidden');
-  document.getElementById('btn_activate').classList.add('hidden');
-  document.getElementById('btn_verify_ad').classList.add('hidden');
-  log.innerHTML = '<span class="loader"></span> '+t('creating');
-  const res = await fetch('/api/create_ad',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      cookies:STATE.cookies, proxy:STATE.proxy, token:STATE.token, ad_account:STATE.adAccount,
-      page_id:STATE.extractedPageId, post_id:STATE.extractedPostId,
-      budget:document.getElementById('budget').value, days:document.getElementById('days').value,
-      objective:obj, traffic_url:trafficUrl, targeting
-    })}).then(r=>r.json());
-  if(res.ok){
-    STATE.lastAdId = res.ad_id;
-    STATE.lastCampId = res.campaign_id;
-    STATE.lastAdsetId = res.adset_id;
-    log.innerHTML = `<div class="text-yellow-400 font-medium">${res.message}</div>
-      <div class="text-gray-500 mt-1 text-xs">Campaign: ${res.campaign_id}</div>
-      <div class="text-gray-500 text-xs">Ad: ${res.ad_id}</div>`;
-    document.getElementById('btn_activate').classList.remove('hidden');
-    document.getElementById('btn_verify_ad').classList.remove('hidden');
-  } else {
-    log.innerHTML = `<div class="text-red-400">${res.reason}</div>`;
+  log.innerHTML = '<span class="loader"></span> جاري إنشاء الإعلان عبر Boost API...';
+
+  try {
+    const res = await fetch('/api/boost_ad', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        cookies: STATE.cookies,
+        proxy: STATE.proxy,
+        page_id: STATE.extractedPageId,
+        post_id: STATE.extractedPostId,
+        budget: budget,
+        days: days,
+        objective: objective,
+        countries: countries,
+        message: '',
+        cta_type: 'MESSAGE_PAGE',
+        app_destination: 'MESSENGER',
+        token: STATE.token
+      })
+    }).then(r => r.json());
+
+    if (res.ok) {
+      STATE.lastAdId = res.ad_id;
+      let msg = res.message || (res.ad_id ? "✅ تم الإنشاء والإيقاف" : "⚠️ تم الإرسال ولكن لم نستخرج ad_id");
+      log.innerHTML = `<div class="text-green-400 font-medium">${msg}</div>
+        <div class="text-gray-500 mt-1 text-xs">Ad ID: ${res.ad_id || 'غير معروف'}</div>
+        <div class="text-gray-500 text-xs">fb_dtsg: ${res.fb_dtsg_present ? '✅' : '❌'} | lsd: ${res.lsd_present ? '✅' : '❌'}</div>
+        <div class="text-gray-500 text-xs break-all">استجابة: ${res.response_preview || ''}</div>`;
+      if (res.ad_id) {
+        let btn = document.getElementById('btn_activate');
+        if(!btn) {
+          btn = document.createElement('button');
+          btn.id = 'btn_activate';
+          btn.className = 'btn btn-orange w-full mt-2';
+          btn.innerText = 'تنشيط';
+          btn.onclick = () => activateAd();
+          document.getElementById('ad_result').after(btn);
+        } else {
+          btn.classList.remove('hidden');
+        }
+      }
+    } else {
+      log.innerHTML = `<div class="text-red-400">${res.reason || 'خطأ غير معروف'}</div>`;
+    }
+  } catch (e) {
+    log.innerHTML = `<div class="text-red-400">خطأ: ${e.message}</div>`;
+  }
+}
+
+async function activateAd() {
+  if(!STATE.lastAdId) return alert('لا يوجد إعلان لتنشيطه');
+  const log = document.getElementById('ad_result');
+  log.innerHTML += '<br><span class="loader"></span> جاري التنشيط...';
+  try {
+    const res = await fetch('/api/activate_ad', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({token: STATE.token, ad_id: STATE.lastAdId})
+    }).then(r=>r.json());
+    if(res.ok){
+      log.innerHTML = `<div class="text-green-400 font-medium">${res.message}</div>
+        <div class="text-gray-500 mt-1 text-xs">Ad ID: ${STATE.lastAdId}</div>`;
+      document.getElementById('btn_activate')?.classList.add('hidden');
+    } else {
+      log.innerHTML += `<br><div class="text-red-400">${res.reason}</div>`;
+    }
+  } catch(e){
+    log.innerHTML += `<br><div class="text-red-400">${e.message}</div>`;
   }
 }
 
@@ -678,36 +531,93 @@ async function verifyPageAccess(){
   }
 }
 
-async function verifyAdInPage(){
-  if(!STATE.lastAdId || !STATE.extractedPageId) return alert('أنشئ الإعلان أولاً');
-  const log = document.getElementById('verify_result_ad');
-  log.classList.remove('hidden');
-  log.innerHTML = '<span class="loader"></span> جاري التحقق...';
-  const res = await fetch('/api/verify_ad_in_page',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({cookies:STATE.cookies, proxy:STATE.proxy, page_id:STATE.extractedPageId, ad_id:STATE.lastAdId})}).then(r=>r.json());
-  if(res.ok){
-    log.innerHTML = `<div class="text-green-400 font-medium">${res.message}</div>`;
-  } else {
-    log.innerHTML = `<div class="text-yellow-400">${res.reason}</div>`;
+function resetAll(){
+  if(confirm(STATE.lang==='ar' ? 'مسح البيانات المؤقتة؟' : 'Clear temp data?')) {
+    STATE.cookies = null;
+    STATE.token = null;
+    STATE.adAccount = null;
+    document.getElementById('cookies').value = '';
+    document.getElementById('proxy').value = '';
+    document.getElementById('ad_account_input').value = '';
+    document.getElementById('verify_result').innerHTML = '';
+    updateAccBadge();
   }
 }
 
-async function activateAd(){
-  if(!STATE.lastAdId) return alert('أنشئ الإعلان أولاً');
-  const log = document.getElementById('ad_result');
-  log.innerHTML += '<br><span class="loader"></span> جاري التنشيط...';
-  const res = await fetch('/api/activate_ad',{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({token:STATE.token, ad_id:STATE.lastAdId, campaign_id:STATE.lastCampId, adset_id:STATE.lastAdsetId})}).then(r=>r.json());
-  if(res.ok){
-    log.innerHTML = `<div class="text-green-400 font-medium">${res.message}</div>
-      <div class="text-gray-500 mt-1 text-xs">Ad ID: ${STATE.lastAdId}</div>`;
-    document.getElementById('btn_activate').classList.add('hidden');
-  } else {
-    log.innerHTML += `<br><div class="text-red-400">${res.reason}</div>`;
+async function checkLicense() {
+  const key = document.getElementById('license_key').value.trim();
+  const errorEl = document.getElementById('login_error');
+  if(!key) {
+    errorEl.textContent = 'أدخل مفتاح الترخيص';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  errorEl.classList.add('hidden');
+  try {
+    const res = await fetch('/api/check_license', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({license_key: key})
+    }).then(r => r.json());
+    if(res.ok) {
+      STATE.licenseKey = key;
+      STATE.userName = res.user_name || 'مستخدم';
+      STATE.expiresAt = res.expires_at;
+      STATE.allowedIp = res.allowed_ip;
+      STATE.sessionLocked = true;
+      localStorage.setItem('license_data', JSON.stringify({
+        licenseKey: key, userName: STATE.userName, expiresAt: STATE.expiresAt
+      }));
+      document.getElementById('login_overlay').classList.add('hidden');
+      document.getElementById('user_name').textContent = STATE.userName;
+      if(STATE.expiresAt) {
+        const d = new Date(STATE.expiresAt);
+        document.getElementById('expires_at').textContent = 'ينتهي: ' + d.toLocaleDateString('ar-EG');
+      }
+    } else {
+      errorEl.textContent = res.reason || 'مفتاح غير صالح';
+      errorEl.classList.remove('hidden');
+    }
+  } catch(e) {
+    errorEl.textContent = 'خطأ في الاتصال';
+    errorEl.classList.remove('hidden');
   }
 }
+
+window.addEventListener('load', async () => {
+  setLang('ar');
+  showTab('t1');
+  const stored = localStorage.getItem('license_data');
+  if(stored) {
+    try {
+      const data = JSON.parse(stored);
+      if(data.licenseKey && data.expiresAt) {
+        const res = await fetch('/api/check_license', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({license_key: data.licenseKey, verify_session: true})
+        }).then(r => r.json());
+        if(res.ok) {
+          STATE.licenseKey = data.licenseKey;
+          STATE.userName = res.user_name || data.userName;
+          STATE.expiresAt = res.expires_at;
+          STATE.allowedIp = res.allowed_ip;
+          STATE.sessionLocked = true;
+          document.getElementById('login_overlay').classList.add('hidden');
+          document.getElementById('user_name').textContent = STATE.userName;
+          if(STATE.expiresAt) {
+            const d = new Date(STATE.expiresAt);
+            document.getElementById('expires_at').textContent = 'ينتهي: ' + d.toLocaleDateString('ar-EG');
+          }
+        } else {
+          localStorage.removeItem('license_data');
+          document.getElementById('login_error').textContent = res.reason || 'انتهت الجلسة';
+          document.getElementById('login_error').classList.remove('hidden');
+        }
+      }
+    } catch(e) {}
+  }
+});
 </script>
 </body>
 </html>
