@@ -7,6 +7,7 @@ import os
 import shutil
 import time
 import hashlib
+import uuid
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -59,16 +60,12 @@ app.add_middleware(
 
 def get_client_ip(request: Request) -> str:
     """Extract client IP from request headers or connection"""
-    # Check X-Forwarded-For header (for proxies/load balancers)
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        # Take the first IP in the chain
         return forwarded.split(",")[0].strip()
-    # Check X-Real-IP header
     real_ip = request.headers.get("x-real-ip")
     if real_ip:
         return real_ip.strip()
-    # Fallback to direct connection IP
     if request.client:
         return request.client.host
     return ""
@@ -117,19 +114,15 @@ def extract_act_id(ad_account_input: str) -> str:
     if not ad_account_input:
         return ''
     s = ad_account_input.strip()
-    # أولوية 1: act= أو act_ في الرابط أو النص
     m = re.search(r'act[=\_](\d+)', s)
     if m:
         return m.group(1)
-    # أولوية 2: ?act= أو &act= (query param)
     m = re.search(r'[?&]act=(\d+)', s)
     if m:
         return m.group(1)
-    # أولوية 3: asset_id= أو payment_account_id= (لينكات الفوترة الجديدة)
     m = re.search(r'[?&](?:asset_id|payment_account_id)=(\d+)', s)
     if m:
         return m.group(1)
-    # أولوية 4: لو المستخدم كتب رقم صافي (بدون حروف)، نعتبره حساب
     if re.fullmatch(r'\d+', s):
         return s
     return ''
@@ -158,7 +151,6 @@ async def inject_popup_remover(page):
 
 def _get_fp_from_cookies(cookies: List[Dict]) -> random.Random:
     """بصمة ثابتة لنفس الحساب: نعمل hash للكوكيز ونستخدمه seed"""
-    # serialise each cookie, sort strings, then hash
     items = [json.dumps({k: str(v) for k, v in sorted(c.items())}, sort_keys=True) for c in cookies]
     raw = ''.join(sorted(items))
     seed = int(hashlib.md5(raw.encode()).hexdigest(), 16) % (2**32)
@@ -166,11 +158,8 @@ def _get_fp_from_cookies(cookies: List[Dict]) -> random.Random:
 
 
 BROWSER_WS_ENDPOINT = os.getenv("BROWSER_WS_ENDPOINT", "").strip()
-# ══ ⚠️ TEMP: testing with Browserless stealth mode ══
 if not BROWSER_WS_ENDPOINT:
-    # wss://production-sfo.browserless.io/stealth?token=YOUR_API_TOKEN&solveCaptchas=true
     BROWSER_WS_ENDPOINT = "wss://production-sfo.browserless.io/stealth?token=2UaK0vpFTjvcSqm28762ae06a9fcfb116d85fb9f88f897021&solveCaptchas=true"
-# ══ TODO: move this token to env var before production ══
 
 
 async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[str] = None, headless: bool = True):
@@ -182,19 +171,15 @@ async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[s
         elif len(parts) == 2:
             proxy_cfg = {'server': f'http://{parts[0]}:{parts[1]}'}
 
-    # ══ بصمة ثابتة لنفس الحساب ══
     rng = _get_fp_from_cookies(cookies) if cookies else random
     ua = rng.choice(_UAS)
     loc = rng.choice(_LOCALES)
     tz = rng.choice(_TZS)
     vw, vh = rng.choice(_VIEWS)
     lang_arg = loc.replace('-','_')
-
-    # ══ device memory / hardware concurrency ثابتين ══
     device_memory = rng.choice([2, 4, 8, 16])
     hardware_concurrency = rng.choice([2, 4, 6, 8, 12])
 
-    # ══ Browserless (Vercel) vs Local Chromium ══
     if BROWSER_WS_ENDPOINT:
         browser = await playwright.chromium.connect_over_cdp(BROWSER_WS_ENDPOINT)
     else:
@@ -234,10 +219,8 @@ async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[s
     if Stealth:
         await Stealth().apply_stealth_async(ctx)
 
-    # ══ Anti-detection scripts ══
     await ctx.add_init_script(f'''
     () => {{
-        // 1. window.screen = viewport (consistency)
         Object.defineProperty(window, 'screen', {{
             get: () => ({{
                 width: {vw},
@@ -250,12 +233,8 @@ async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[s
                 availTop: 0
             }})
         }});
-
-        // 2. deviceMemory + hardwareConcurrency
         Object.defineProperty(navigator, 'deviceMemory', {{get: () => {device_memory}}});
         Object.defineProperty(navigator, 'hardwareConcurrency', {{get: () => {hardware_concurrency}}});
-
-        // 3. plugins (non-empty list)
         const fakePlugins = [
             {{description: "Portable Document Format", filename: "internal-pdf-viewer", name: "PDF Viewer", version: undefined}},
             {{description: "Portable Document Format", filename: "internal-pdf-viewer2", name: "Chrome PDF Viewer", version: undefined}},
@@ -269,8 +248,6 @@ async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[s
             fakePlugins.namedItem = (n) => fakePlugins.find(p => p.name === n);
             return fakePlugins;
         }}}});
-
-        // 4. chrome.runtime
         if (typeof window.chrome === 'undefined') {{
             window.chrome = {{}};
         }}
@@ -284,8 +261,6 @@ async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[s
                 RequestUpdateCheckStatus: {{NO_UPDATE: "no_update", THROTTLED: "throttled", UPDATE_AVAILABLE: "update_available"}}
             }};
         }}
-
-        // 5. notification permission
         const origNotification = window.Notification;
         Object.defineProperty(window, 'Notification', {{
             get: () => origNotification,
@@ -296,7 +271,6 @@ async def get_stealth_browser(playwright, cookies: List[Dict], proxy: Optional[s
         }}
     }}
     ''')
-
     return browser, ctx
 
 
@@ -313,9 +287,7 @@ async def verify_and_extract(request: Request):
     except ValueError as e:
         return {"ok": False, "reason": str(e)}
 
-    # استخراج act_id من اللينك
     act_id = extract_act_id(billing_url)
-
     if billing_url:
         target_url = billing_url
         resolved_account = f"act_{act_id}" if act_id else None
@@ -327,8 +299,6 @@ async def verify_and_extract(request: Request):
         async with async_playwright() as p:
             browser, ctx = await get_stealth_browser(p, cookies, proxy, headless=False)
             page = await ctx.new_page()
-
-            # ══ افتح لينك الفوترة مباشرة ══
             await page.goto(target_url, wait_until='domcontentloaded', timeout=30000)
             await page.wait_for_timeout(3000)
             await inject_popup_remover(page)
@@ -367,7 +337,6 @@ async def verify_and_extract(request: Request):
                 } catch(e) { return null; }
             }''')
 
-            # لو التوكن مش موجود في صفحة الفوترة، نروح Ads Manager
             if not token and billing_url:
                 await page.goto('https://www.facebook.com/ads/manager/', wait_until='domcontentloaded', timeout=30000)
                 await page.wait_for_timeout(3000)
@@ -388,7 +357,6 @@ async def verify_and_extract(request: Request):
             name_match = re.search(r'<title>([^<]+)</title>', content)
             name = name_match.group(1).replace('Facebook', '').strip() if name_match else 'مستخدم'
 
-            # استخراج الحساب من الصفحة لو مفيش
             if not resolved_account:
                 found = list(set(re.findall(r'act_(\d+)', content)))
                 ad_like = [x for x in found if len(x) <= 15]
@@ -423,9 +391,7 @@ async def extract_post_info(request: Request):
     page_slug = None
 
     patterns = [
-        # Legacy numeric story_fbid: story_fbid=12345&id=PAGEID
         (r'story_fbid=(\d+).*?[&?]id=(\d+)', (1, 2)),
-        # pfbid story_fbid: story_fbid=pfbidABC...&id=PAGEID
         (r'story_fbid=([A-Za-z0-9_]+).*?[&?]id=(\d+)', (1, 2)),
         (r'facebook\.com/(?:groups/\d+/)?([^/]+)/(?:posts|videos|photos)/(\d+)', (1, 2, True)),
         (r'[?&]fbid=(\d+)', (1,)),
@@ -446,7 +412,6 @@ async def extract_post_info(request: Request):
     if not post_id:
         return {"ok": False, "reason": "لم يتم التعرف على صيغة الرابط"}
 
-    # ══ لو post_id هو pfbid، نحاول نحوله لرقمى ══
     if post_id and post_id.startswith('pfbid') and cookies_raw:
         try:
             cookies = parse_cookies(cookies_raw)
@@ -455,31 +420,23 @@ async def extract_post_info(request: Request):
                 page = await ctx.new_page()
                 await page.goto(url, wait_until='domcontentloaded', timeout=30000)
                 await page.wait_for_timeout(4000)
-
-                # 1. نشوف الـ URL النهائى بعد الـ redirect
                 final_url = page.url
                 m = re.search(r'/posts/(\d+)', final_url)
                 if m:
                     post_id = m.group(1)
                 else:
-                    # 2. نبحث فى صفحة HTML عن رقم المنشور
                     content = await page.content()
-                    # ابحث عن "post_id":"123..." أو similar patterns
                     m = re.search(r'"post_id":"(\d+)"', content)
                     if m:
                         post_id = m.group(1)
                     else:
-                        # 3. ابحث عن "id":"PAGEID_POSTID"
                         if page_id:
                             m = re.search(rf'"id":"{page_id}_(\d+)"', content)
                             if m:
                                 post_id = m.group(1)
-
                 await browser.close()
         except Exception as e:
             print(f"[!] pfbid resolution failed: {e}")
-            # لو فشل التحويل، نرجع الـ pfbid زى ما هو (ممكن الـ API يقبله)
-            pass
 
     if page_slug and not page_id and token:
         try:
@@ -516,7 +473,6 @@ async def add_cards(request: Request):
     if not billing_url:
         return {"ok": False, "reason": "لم يتم تحديد حساب إعلاني — أدخل رابط الفوترة في التبويب الأول"}
 
-    # ========== دالة تربط كارت واحد في جلسة مستقلة ==========
     async def link_one_card(card_line: str) -> dict:
         parts = card_line.strip().split('|')
         if len(parts) < 4:
@@ -533,7 +489,6 @@ async def add_cards(request: Request):
             async with async_playwright() as p:
                 browser, ctx = await get_stealth_browser(p, cookies, proxy, headless=False)
                 page = await ctx.new_page()
-
                 print(f"[*] جلسة جديدة: فتح {billing_url}")
                 await page.goto(billing_url, wait_until='networkidle', timeout=45000)
                 await page.wait_for_timeout(5000)
@@ -543,17 +498,14 @@ async def add_cards(request: Request):
                     await browser.close()
                     return {"card": masked, "status": "❌ كوكيز منتهية أو checkpoint"}
 
-                # 1. Add payment method
                 add_btn = page.get_by_role("button", name="Add payment method")
                 await add_btn.click(timeout=15000)
                 await page.wait_for_timeout(3000)
 
-                # 2. Next
                 next_btn = page.get_by_role("button", name="Next")
                 await next_btn.click(timeout=10000)
                 await page.wait_for_timeout(4000)
 
-                # 3. Fill card data
                 name_input = page.get_by_role("textbox", name="Name on card")
                 await name_input.wait_for(timeout=8000)
                 await name_input.fill(name_on_card)
@@ -570,19 +522,16 @@ async def add_cards(request: Request):
                 await cvv_input.wait_for(timeout=5000)
                 await cvv_input.fill(cvv)
 
-                # 4. Save
                 save_btn = page.get_by_role("button", name="Save")
                 await save_btn.click(timeout=5000)
 
-                # 5. انتظار طويل جداً للتأكد (20 ثانية)
                 await page.wait_for_timeout(20000)
 
-                # 6. Verify (محاولات متعددة)
                 page_content = await page.content()
                 text_lower = page_content.lower()
 
                 success_keywords = [
-                    "تمت إضافة ��لبطاقة", "card added", "successfully added",
+                    "تمت إضافة البطاقة", "card added", "successfully added",
                     "payment method added", "has been added", "you've added",
                     "تم إضافة", "added a new payment", "new card", "payment method saved"
                 ]
@@ -593,13 +542,11 @@ async def add_cards(request: Request):
                     "we couldn't", "something went wrong", "problem", "can't add"
                 ]
 
-                # النجاح الحقيقي = وجود كلمة نجاح + عدم وجود أي كلمة فشل
                 has_success = any(k in page_content for k in success_keywords)
                 has_fail = any(k in text_lower for k in fail_keywords)
                 success = has_success and not has_fail
                 fail = has_fail
 
-                # لو لسه غير مؤكد، نستنى 10 ثواني تاني ونفحص تاني
                 if not success and not fail:
                     await page.wait_for_timeout(10000)
                     page_content = await page.content()
@@ -609,7 +556,6 @@ async def add_cards(request: Request):
                     success = has_success and not has_fail
                     fail = has_fail
 
-                # لو لسه غير مؤكد، نستنى 10 ثواني أخرى (إجمالي 40 ثانية)
                 if not success and not fail:
                     await page.wait_for_timeout(10000)
                     page_content = await page.content()
@@ -619,7 +565,6 @@ async def add_cards(request: Request):
                     success = has_success and not has_fail
                     fail = has_fail
 
-                # لو غير مؤكد، نحفظ صفحة HTML للـ debugging
                 if not success and not fail:
                     try:
                         ts = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -644,7 +589,6 @@ async def add_cards(request: Request):
 
     results = []
 
-    # ========== Manual: كل كارت في جلسة مستقلة ==========
     if mode == "manual":
         lines = [l.strip() for l in cards_text.strip().split('\n') if l.strip()]
         if not lines:
@@ -653,7 +597,6 @@ async def add_cards(request: Request):
             result = await link_one_card(line)
             results.append(result)
 
-    # ========== Auto: نجرب لحد ما ينجح (max 5) — كروت مختلفة ==========
     else:
         if not CARDS_SOURCE:
             return {"ok": False, "reason": "لم يتم تكوين مصدر البطاقات (CARDS_SOURCE_URL)"}
@@ -661,7 +604,6 @@ async def add_cards(request: Request):
         max_attempts = 5
         tried_cards = set()
         for attempt in range(max_attempts):
-            # جلب كارت عشوائي (مش متكرر)
             try:
                 resp = requests.get(CARDS_SOURCE, timeout=10)
                 if resp.status_code != 200:
@@ -671,7 +613,6 @@ async def add_cards(request: Request):
                 if not lines:
                     results.append({"card": "—", "status": "❌ قائمة البطاقات فارغة"})
                     break
-                # نختار كارت مختلف عن اللى جربناه قبل كده
                 available = [l for l in lines if l not in tried_cards]
                 if not available:
                     results.append({"card": "—", "status": "❌ جربنا كل الكروت المتاحة"})
@@ -684,10 +625,8 @@ async def add_cards(request: Request):
 
             result = await link_one_card(card_line)
             results.append(result)
-
             if "✅" in result["status"]:
-                break  # نجح، نوقف
-
+                break
             if attempt < max_attempts - 1:
                 await asyncio.sleep(3)
 
@@ -708,7 +647,6 @@ async def activate_ad(request: Request):
     base = "https://graph.facebook.com/v18.0"
 
     try:
-        # نجيب campaign_id و adset_id تلقائياً من الـ ad
         info = requests.get(f"{base}/{ad_id}", params={"fields": "campaign_id,adset_id", "access_token": token}, timeout=10).json()
         if "error" in info:
             return {"ok": False, "reason": f"خطأ طلب معلومات الإعلان: {info['error'].get('message','')}"}
@@ -733,7 +671,6 @@ async def activate_ad(request: Request):
 
 # ======================= Helper: extract fb_dtsg + lsd from FB page =======================
 async def extract_fb_tokens(page) -> dict:
-    """يستخرج fb_dtsg و lsd من صفحة فيسبوك بالـ Playwright"""
     try:
         await page.goto('https://www.facebook.com/', wait_until='domcontentloaded', timeout=30000)
         await page.wait_for_timeout(2000)
@@ -741,7 +678,6 @@ async def extract_fb_tokens(page) -> dict:
 
         fb_dtsg = await page.evaluate('''() => {
             try {
-                // 1. window.require modules (DTSGInitialData / DTSGInitData)
                 if (typeof window.require === 'function') {
                     try {
                         const t = window.require('DTSGInitialData')?.token;
@@ -752,15 +688,11 @@ async def extract_fb_tokens(page) -> dict:
                         if (t) return t;
                     } catch(e) {}
                 }
-                // 2. DOM input element
                 const input = document.querySelector('input[name="fb_dtsg"]');
                 if (input && input.value) return input.value;
-                // 3. Cookies (dtsg_ag)
                 const ck = document.cookie.match(/dtsg_ag=([^;]+)/);
                 if (ck && ck[1]) return decodeURIComponent(ck[1]);
-                // 4. Global window.__DTSG
                 if (window.__DTSG?.token) return window.__DTSG.token;
-                // 5. Script tag text search
                 const script = Array.from(document.querySelectorAll('script')).find(
                     s => s.textContent.includes('DTSGInitialData') || s.textContent.includes('"fb_dtsg"')
                 );
@@ -790,7 +722,7 @@ async def extract_fb_tokens(page) -> dict:
         return {"fb_dtsg": "", "lsd": ""}
 
 
-# ======================= API: Boost Ad via GraphQL (unofficial) =======================
+# ======================= API: Boost Ad via GraphQL (unofficial) with full variables =======================
 @app.post("/api/boost_ad")
 async def boost_ad(request: Request):
     data = await request.json()
@@ -800,11 +732,12 @@ async def boost_ad(request: Request):
     post_id = data.get("post_id", "").strip()
     budget = data.get("budget", "10")
     days = int(data.get("days", 1) or 1)
-    objective = data.get("objective", "MESSAGES")
+    objective = data.get("objective", "POST_ENGAGEMENT")
     message = data.get("message", "").strip()
     cta_type = data.get("cta_type", "MESSAGE_PAGE")
     app_destination = data.get("app_destination", "MESSENGER")
     countries = data.get("countries", ["EG"])
+    token = data.get("token", "")
 
     try:
         cookies = parse_cookies(cookies_raw)
@@ -814,12 +747,10 @@ async def boost_ad(request: Request):
     if not page_id or not post_id:
         return {"ok": False, "reason": "page_id و post_id مطلوبين"}
 
-    # ─── 1) افتح فيسبوك واستخرج fb_dtsg + lsd ───
     try:
         async with async_playwright() as p:
             browser, ctx = await get_stealth_browser(p, cookies, proxy, headless=False)
             page = await ctx.new_page()
-
             tokens = await extract_fb_tokens(page)
             fb_dtsg = tokens.get("fb_dtsg", "")
             lsd = tokens.get("lsd", "")
@@ -828,48 +759,136 @@ async def boost_ad(request: Request):
                 await browser.close()
                 return {"ok": False, "reason": "مش قادر استخرج fb_dtsg — جرب كوكيز تانية أو صفحة تانية"}
 
-            # ─── 2) بناء الـ GraphQL payload ───
+            # Build targeting spec string
+            targeting_dict = {
+                "geo_locations": {"countries": countries},
+                "age_min": None,
+                "age_max": None,
+                "location_types": ["home", "recent"],
+                "targeting_optimization": "none",
+                "targeting_automation": "none"
+            }
+            targeting_spec_string = json.dumps(targeting_dict)
+
+            impression_id = str(uuid.uuid4())
+            flow_id = str(uuid.uuid4())
+            budget_cents = int(float(budget) * 100)
+
+            objective_map = {
+                "MESSAGES": {"ads_lwi_goal": "GET_MULTI_MESSAGES", "objective": "MESSAGES"},
+                "POST_ENGAGEMENT": {"ads_lwi_goal": "POST_ENGAGEMENT", "objective": "POST_ENGAGEMENT"},
+                "LINK_CLICKS": {"ads_lwi_goal": "GET_WEBSITE_VISITORS", "objective": "LINK_CLICKS"},
+                "PAGE_LIKES": {"ads_lwi_goal": "GET_PAGE_LIKES", "objective": "PAGE_LIKES"}
+            }
+            goal = objective_map.get(objective, objective_map["POST_ENGAGEMENT"])
+
+            duration = days if days > 0 else -1
+
+            # Extract c_user from cookies
+            c_user = None
+            for c in cookies:
+                if c.get("name") == "c_user":
+                    c_user = c.get("value")
+                    break
+            actor_id = c_user
+
             creation_spec = {
-                "budget": int(float(budget) * 100),
+                "ab_test_audiences": [
+                    {
+                        "audience_option": "NCPP",
+                        "targeting_spec_string": targeting_spec_string
+                    }
+                ],
+                "ads_lwi_goal": goal["ads_lwi_goal"],
+                "audience_option": "NCPP",
+                "auto_boost_settings_id": None,
+                "billing_event": "IMPRESSIONS",
+                "budget": budget_cents,
                 "budget_type": "DAILY_BUDGET",
-                "objective": objective,
-                "targeting_spec_string": json.dumps({
-                    "geo_locations": {"countries": countries},
-                    "age_min": None,
-                    "age_max": None
-                }),
+                "currency": "USD",
+                "dayparting_specs": [],
+                "draft_id": None,
+                "dsa_beneficiary": "",
+                "dsa_payor": "",
+                "duration_in_days": duration,
+                "enable_clo": False,
+                "impression_id": impression_id,
+                "is_automatic_goal": False,
+                "is_budget_flex": False,
+                "is_gen_ai_media": False,
+                "is_in_subscription_subsidy": False,
+                "is_instant_ad": False,
+                "is_link_click_defaulted_ad": False,
+                "legacy_ad_account_id": "",
+                "legacy_entry_point": "www_profile_plus_timeline",
+                "local_ads_location_page_id": None,
+                "pacing_type": None,
+                "partner_app_welcome_message": None,
+                "pixel_event_type": None,
+                "pixel_id": None,
+                "placement_spec": {
+                    "publisher_platforms": ["FACEBOOK", "MESSENGER"]
+                },
+                "regional_regulated_categories": [],
+                "regulated_categories": [],
+                "regulated_category": "NONE",
+                "retargeting_enabled": False,
+                "run_continuously": False,
+                "sabr_version": "v1_v2",
+                "saved_audience_id": None,
+                "similar_advertiser_budget_recommendation": 0,
+                "similar_advertiser_conversion_count": 0,
+                "special_ad_category_countries": [],
+                "start_time": None,
+                "surface": "BIZ_WEB",
+                "targeting_spec_string": targeting_spec_string,
+                "zero_outcomes_budget_recommendation": 0,
                 "adgroup_specs": [
                     {
                         "creative": {
-                            "object_story_spec": {
-                                "link_data": {
-                                    "message": message,
-                                    "image_hash": "",
-                                    "name": "",
-                                    "call_to_action": {
-                                        "type": cta_type,
-                                        "value": {"app_destination": app_destination}
+                            "branded_content": {},
+                            "creative_sourcing_spec": {},
+                            "degrees_of_freedom_spec": {
+                                "creative_features_spec": {
+                                    "product_extensions": {
+                                        "action_metadata": {"type": "UNKOWN"},
+                                        "enroll_status": "OPT_OUT"
                                     }
-                                }
-                            }
+                                },
+                                "degrees_of_freedom_type": "USER_ENROLLED_LWI_ACO"
+                            },
+                            "facebook_branded_content": {},
+                            "instagram_branded_content": {},
+                            "object_story_id": f"{page_id}_{post_id}"
                         }
                     }
                 ],
-                "duration_in_days": days,
-                "page_id": page_id,
-                "target_id": post_id
+                "cta_data": None,
+                "objective": goal["objective"]
+            }
+
+            variables = {
+                "input": {
+                    "boost_id": None,
+                    "creation_spec": creation_spec,
+                    "external_dependent_ent_id": None,
+                    "flow_id": flow_id,
+                    "lwi_asset_id": {"id": page_id},
+                    "manual_review_requested": False,
+                    "page_id": page_id,
+                    "product": "BOOSTED_CONSOLIDATED_PRODUCT",
+                    "target_id": post_id,
+                    "actor_id": actor_id,
+                    "client_mutation_id": "1"
+                }
             }
 
             graphql_payload = {
                 "fb_dtsg": fb_dtsg,
-                "variables": json.dumps({"input": {"creation_spec": creation_spec}}),
+                "variables": json.dumps(variables),
                 "doc_id": "9955578997835249"
             }
 
-            # ─── 3) بناء الـ cookies string ───
-            cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies if 'name' in c and 'value' in c])
-
-            # ─── 4) إرسال الـ GraphQL request من الـ page نفسها (تجاوز CORS) ───
             boost_result = await page.evaluate(f'''async () => {{
                 try {{
                     const res = await fetch("https://business.facebook.com/api/graphql/", {{
@@ -889,7 +908,6 @@ async def boost_ad(request: Request):
 
             await browser.close()
 
-            # ─── 5) Parse response واستخرج ad_id ───
             boost_json = {}
             if isinstance(boost_result, dict) and "raw" in boost_result:
                 try:
@@ -901,40 +919,35 @@ async def boost_ad(request: Request):
             else:
                 boost_json = {"unknown": str(boost_result)[:200]}
 
-            # استخراج ad_id/boosted_id من أى مكان ممكن
             ad_id = None
             if "data" in boost_json and boost_json["data"]:
-                for key, val in boost_json["data"].items():
-                    if isinstance(val, dict):
-                        # nested boosted_item
-                        if "boosted_item" in val:
-                            item = val["boosted_item"]
-                            ad_id = item.get("id") or item.get("ad_id") or item.get("boosted_id")
-                        # direct
-                        ad_id = ad_id or val.get("id") or val.get("ad_id") or val.get("boosted_id")
-            # fallback: regex
+                if "create_boosted_component" in boost_json["data"]:
+                    comp = boost_json["data"]["create_boosted_component"]
+                    ad_id = comp.get("id") or comp.get("campaign", {}).get("id")
+                else:
+                    for key, val in boost_json["data"].items():
+                        if isinstance(val, dict):
+                            if "boosted_item" in val:
+                                ad_id = val["boosted_item"].get("id")
+                            if not ad_id:
+                                ad_id = val.get("id") or val.get("ad_id")
             if not ad_id:
                 raw = json.dumps(boost_json)
-                m = re.search(r'"(act_\d+)"', raw)
+                m = re.search(r'"id":"(\d+)"', raw)
                 if m:
                     ad_id = m.group(1)
 
-            # ─── 6) إيقاف فورى (REST API fallback) ───
             paused = False
-            if ad_id:
-                act_id = ad_id.replace("act_", "").strip()
-                # نحاول نجيب token من نفس الكوكيز
-                token = data.get("token", "")
-                if token:
-                    try:
-                        r = requests.post(
-                            f"https://graph.facebook.com/v18.0/{ad_id}",
-                            data={"status": "PAUSED", "access_token": token},
-                            timeout=10
-                        ).json()
-                        paused = "error" not in r
-                    except Exception as pause_err:
-                        print(f"[!] Pause error: {pause_err}")
+            if ad_id and token:
+                try:
+                    r = requests.post(
+                        f"https://graph.facebook.com/v18.0/{ad_id}",
+                        data={"status": "PAUSED", "access_token": token},
+                        timeout=10
+                    ).json()
+                    paused = "error" not in r
+                except Exception as pause_err:
+                    print(f"[!] Pause error: {pause_err}")
 
             return {
                 "ok": True,
@@ -950,109 +963,7 @@ async def boost_ad(request: Request):
         return {"ok": False, "reason": f"خطأ: {str(e)[:150]}"}
 
 
-# ======================= API: Check License Key with IP Protection =======================
-@app.post("/api/check_license")
-async def check_license(request: Request):
-    data = await request.json()
-    license_key = data.get("license_key", "").strip()
-    verify_session = data.get("verify_session", False)
-    
-    if not license_key:
-        return {"ok": False, "reason": "مفتاح الترخيص مطلوب"}
-    
-    # Get client IP
-    client_ip = get_client_ip(request)
-    
-    # Check Supabase
-    if SUPABASE_URL and SUPABASE_KEY:
-        try:
-            headers = {
-                "apikey": SUPABASE_KEY,
-                "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type": "application/json"
-            }
-            
-            # Query subscriptions table
-            url = f"{SUPABASE_URL}/rest/v1/subscriptions?license_key=eq.{license_key}&select=*"
-            res = requests.get(url, headers=headers, timeout=10)
-            
-            if res.status_code == 200:
-                subs = res.json()
-                if subs and len(subs) > 0:
-                    sub = subs[0]
-                    sub_id = sub.get("id")
-                    is_active = sub.get("is_active", False)
-                    admin_frozen = sub.get("admin_frozen", False)
-                    expires_at = sub.get("expires_at")
-                    allowed_ip = sub.get("allowed_ip")
-                    
-                    # Check if subscription is active
-                    if not is_active:
-                        return {"ok": False, "reason": "الاشتراك غير مفعل"}
-                    
-                    # Check if admin has frozen the subscription
-                    if admin_frozen:
-                        return {"ok": False, "reason": "تم تجميد الاشتراك من قبل المسؤول"}
-                    
-                    # Check expiration
-                    if expires_at:
-                        exp_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-                        if exp_date < datetime.now(exp_date.tzinfo):
-                            return {"ok": False, "reason": "انتهت صلاحية الاشتراك"}
-                    
-                    # IP Protection Logic
-                    if verify_session:
-                        # This is a session verification (user already logged in before)
-                        # Check if IP matches the allowed_ip
-                        if allowed_ip and allowed_ip != client_ip:
-                            return {"ok": False, "reason": "تم فتح الأداة من جهاز آخر. لا يمكن استخدام نفس المفتاح من عدة أجهزة."}
-                    else:
-                        # This is a new login
-                        if allowed_ip and allowed_ip != client_ip:
-                            # IP already set and different - reject
-                            return {"ok": False, "reason": "هذا المفتاح مرتبط بجهاز آخر. تواصل مع المسؤول لإعادة التعيين."}
-                        elif not allowed_ip:
-                            # First login - lock IP
-                            update_url = f"{SUPABASE_URL}/rest/v1/subscriptions?id=eq.{sub_id}"
-                            update_data = {
-                                "allowed_ip": client_ip,
-                                "current_ip": client_ip,
-                                "last_login_at": datetime.now().isoformat()
-                            }
-                            requests.patch(update_url, headers=headers, json=update_data, timeout=10)
-                        else:
-                            # Same IP - update last login
-                            update_url = f"{SUPABASE_URL}/rest/v1/subscriptions?id=eq.{sub_id}"
-                            update_data = {
-                                "current_ip": client_ip,
-                                "last_login_at": datetime.now().isoformat()
-                            }
-                            requests.patch(update_url, headers=headers, json=update_data, timeout=10)
-                    
-                    return {
-                        "ok": True,
-                        "user_name": sub.get("user_name") or sub.get("user_email", "مستخدم"),
-                        "expires_at": expires_at,
-                        "allowed_ip": allowed_ip or client_ip
-                    }
-                else:
-                    return {"ok": False, "reason": "مفتاح غير صالح"}
-            else:
-                return {"ok": False, "reason": "خطأ في التحقق"}
-        except Exception as e:
-            print(f"[!] License check error: {e}")
-            return {"ok": False, "reason": "خطأ في الاتصال"}
-    
-    # Fallback: accept any key if no Supabase configured (for testing)
-    return {
-        "ok": True,
-        "user_name": "مستخدم تجريبي",
-        "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
-        "allowed_ip": client_ip
-    }
-
-
-# ======================= API: Create Ad via Graph API =======================
+# ======================= API: Create Ad via Graph API (official, kept for compatibility) =======================
 @app.post("/api/create_ad")
 async def create_ad(request: Request):
     data = await request.json()
@@ -1073,7 +984,6 @@ async def create_ad(request: Request):
     if not page_id or not post_id:
         return {"ok": False, "reason": "page_id و post_id مطلوبين — أدخل رابط المنشور أولاً"}
 
-    # تنظيف act_id
     act_raw = re.sub(r'[^0-9]', '', ad_account.replace("act_", ""))
     if not act_raw:
         return {"ok": False, "reason": "تنسيق الحساب الإعلاني غير صحيح"}
@@ -1081,7 +991,6 @@ async def create_ad(request: Request):
     base = "https://graph.facebook.com/v18.0"
     headers = {"Content-Type": "application/json"}
 
-    # mapping الهدف → optimization_goal + billing_event
     OBJ_MAP = {
         "OUTCOME_ENGAGEMENT":  ("POST_ENGAGEMENT", "POST_ENGAGEMENT"),
         "OUTCOME_TRAFFIC":     ("LINK_CLICKS",      "LINK_CLICKS"),
@@ -1094,19 +1003,22 @@ async def create_ad(request: Request):
     try:
         daily_budget = int(float(budget) * 100)
 
-        # ─── 1) إنشاء الحملة (form-encoded) ───
-        camp_r = requests.post(f"{base}/{act}/campaigns", json={
-            "name": f"Campaign_{post_id[:30]}",
-            "objective": objective,
-            "status": "PAUSED",
-            "special_ad_categories": [],
-            "access_token": token
-        }, timeout=15).json()
+        camp_r = requests.post(
+            f"{base}/{act}/campaigns",
+            params={"access_token": token},
+            json={
+                "name": f"Campaign_{post_id[:30]}",
+                "objective": objective,
+                "status": "PAUSED",
+                "special_ad_categories": [],
+            },
+            timeout=15
+        ).json()
         if "error" in camp_r:
-            return {"ok": False, "reason": f"خطأ إنشاء الحملة: {camp_r['error'].get('message', str(camp_r['error']))}"}
+            err = camp_r["error"]
+            return {"ok": False, "reason": f"خطأ إنشاء الحملة: {err.get('message','')} | code={err.get('code','')} | subcode={err.get('error_subcode','')} | type={err.get('type','')} | full={str(err)}"}
         campaign_id = camp_r.get("id")
 
-        # ─── 2) إنشاء AdSet ───
         if objective == "OUTCOME_TRAFFIC" and traffic_url:
             opt_goal = "LINK_CLICKS"
             billing_ev = "LINK_CLICKS"
@@ -1131,10 +1043,10 @@ async def create_ad(request: Request):
             timeout=15
         ).json()
         if "error" in adset_r:
-            return {"ok": False, "reason": f"خطأ إنشاء المجموعة: {adset_r['error'].get('message', str(adset_r['error']))}"}
+            err = adset_r["error"]
+            return {"ok": False, "reason": f"خطأ إنشاء المجموعة: {err.get('message','')} | code={err.get('code','')} | subcode={err.get('error_subcode','')} | full={str(err)}"}
         adset_id = adset_r.get("id")
 
-        # ─── 3) إنشاء Ad Creative ───
         if objective == "OUTCOME_TRAFFIC" and traffic_url:
             story_spec = {"page_id": page_id, "link_data": {"link": traffic_url, "message": ""}}
         else:
@@ -1153,7 +1065,6 @@ async def create_ad(request: Request):
             return {"ok": False, "reason": f"خطأ إنشاء الكريتيف: {creative_r['error'].get('message', str(creative_r['error']))}"}
         creative_id = creative_r.get("id")
 
-        # ─── 4) إنشاء الإعلان ───
         ad_r = requests.post(
             f"{base}/{act}/ads",
             params={"access_token": token},
@@ -1193,7 +1104,6 @@ async def verify_page_access(request: Request):
 
     try:
         base = "https://graph.facebook.com/v18.0"
-        # tasks field requires page token — use name + fan_count instead
         r = requests.get(
             f"{base}/{page_id}",
             params={"fields": "name,fan_count", "access_token": token},
@@ -1204,9 +1114,7 @@ async def verify_page_access(request: Request):
             return {"ok": False, "reason": f"خطأ: {r['error'].get('message', str(r['error']))}"}
 
         page_name = r.get("name", page_id)
-        # إذا قدرنا نقرأ الصفحة يعني عندنا صلاحية
         can_post = True
-
         return {"ok": True, "page_name": page_name, "can_post": can_post}
 
     except Exception as e:
@@ -1214,18 +1122,15 @@ async def verify_page_access(request: Request):
 
 
 # ======================= Admin Routes =======================
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "besho2024")  # Change this in production!
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "besho2024")
 
 def generate_license_key():
-    """Generate a unique license key"""
     import uuid
     return f"BSH-{uuid.uuid4().hex[:8].upper()}-{uuid.uuid4().hex[:4].upper()}"
-
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_page(request: Request):
     return templates.TemplateResponse(request, "admin.html")
-
 
 @app.post("/api/admin/login")
 async def admin_login(request: Request):
@@ -1235,13 +1140,10 @@ async def admin_login(request: Request):
         return {"ok": True}
     return {"ok": False, "reason": "كلمة السر غير صحيحة"}
 
-
 @app.get("/api/admin/subscriptions")
 async def get_subscriptions(request: Request):
-    """Get all subscriptions"""
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"ok": False, "reason": "Supabase غير مكون"}
-    
     try:
         headers = {
             "apikey": SUPABASE_KEY,
@@ -1256,15 +1158,11 @@ async def get_subscriptions(request: Request):
     except Exception as e:
         return {"ok": False, "reason": str(e)}
 
-
 @app.post("/api/admin/create_subscription")
 async def create_subscription(request: Request):
-    """Create a new subscription"""
     data = await request.json()
-    
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"ok": False, "reason": "Supabase غير مكون"}
-    
     try:
         headers = {
             "apikey": SUPABASE_KEY,
@@ -1272,11 +1170,9 @@ async def create_subscription(request: Request):
             "Content-Type": "application/json",
             "Prefer": "return=representation"
         }
-        
         license_key = generate_license_key()
         days = int(data.get("days", 30))
         expires_at = (datetime.now() + timedelta(days=days)).isoformat()
-        
         new_sub = {
             "license_key": license_key,
             "user_name": data.get("user_name", ""),
@@ -1285,10 +1181,8 @@ async def create_subscription(request: Request):
             "expires_at": expires_at,
             "admin_frozen": False
         }
-        
         url = f"{SUPABASE_URL}/rest/v1/subscriptions"
         resp = requests.post(url, headers=headers, json=new_sub, timeout=10)
-        
         if resp.status_code in [200, 201]:
             created = resp.json()
             return {"ok": True, "subscription": created[0] if isinstance(created, list) else created}
@@ -1296,26 +1190,20 @@ async def create_subscription(request: Request):
     except Exception as e:
         return {"ok": False, "reason": str(e)}
 
-
 @app.post("/api/admin/update_subscription")
 async def update_subscription(request: Request):
-    """Update a subscription"""
     data = await request.json()
     sub_id = data.get("id")
-    
     if not sub_id:
         return {"ok": False, "reason": "معرف الاشتراك مطلوب"}
-    
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"ok": False, "reason": "Supabase غير مكون"}
-    
     try:
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": "application/json"
         }
-        
         update_data = {}
         if "is_active" in data:
             update_data["is_active"] = data["is_active"]
@@ -1330,44 +1218,119 @@ async def update_subscription(request: Request):
         if "reset_ip" in data and data["reset_ip"]:
             update_data["allowed_ip"] = None
             update_data["current_ip"] = None
-        
         url = f"{SUPABASE_URL}/rest/v1/subscriptions?id=eq.{sub_id}"
         resp = requests.patch(url, headers=headers, json=update_data, timeout=10)
-        
         if resp.status_code in [200, 204]:
             return {"ok": True}
         return {"ok": False, "reason": f"خطأ: {resp.text}"}
     except Exception as e:
         return {"ok": False, "reason": str(e)}
 
-
 @app.post("/api/admin/delete_subscription")
 async def delete_subscription(request: Request):
-    """Delete a subscription"""
     data = await request.json()
     sub_id = data.get("id")
-    
     if not sub_id:
         return {"ok": False, "reason": "معرف الاشتراك مطلوب"}
-    
     if not SUPABASE_URL or not SUPABASE_KEY:
         return {"ok": False, "reason": "Supabase غير مكون"}
-    
     try:
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": "application/json"
         }
-        
         url = f"{SUPABASE_URL}/rest/v1/subscriptions?id=eq.{sub_id}"
         resp = requests.delete(url, headers=headers, timeout=10)
-        
         if resp.status_code in [200, 204]:
             return {"ok": True}
         return {"ok": False, "reason": f"خطأ: {resp.text}"}
     except Exception as e:
         return {"ok": False, "reason": str(e)}
+
+
+# ======================= API: Check License Key with IP Protection =======================
+@app.post("/api/check_license")
+async def check_license(request: Request):
+    data = await request.json()
+    license_key = data.get("license_key", "").strip()
+    verify_session = data.get("verify_session", False)
+    
+    if not license_key:
+        return {"ok": False, "reason": "مفتاح الترخيص مطلوب"}
+    
+    client_ip = get_client_ip(request)
+    
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            headers = {
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json"
+            }
+            url = f"{SUPABASE_URL}/rest/v1/subscriptions?license_key=eq.{license_key}&select=*"
+            res = requests.get(url, headers=headers, timeout=10)
+            if res.status_code == 200:
+                subs = res.json()
+                if subs and len(subs) > 0:
+                    sub = subs[0]
+                    sub_id = sub.get("id")
+                    is_active = sub.get("is_active", False)
+                    admin_frozen = sub.get("admin_frozen", False)
+                    expires_at = sub.get("expires_at")
+                    allowed_ip = sub.get("allowed_ip")
+                    
+                    if not is_active:
+                        return {"ok": False, "reason": "الاشتراك غير مفعل"}
+                    if admin_frozen:
+                        return {"ok": False, "reason": "تم تجميد الاشتراك من قبل المسؤول"}
+                    if expires_at:
+                        exp_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                        if exp_date < datetime.now(exp_date.tzinfo):
+                            return {"ok": False, "reason": "انتهت صلاحية الاشتراك"}
+                    
+                    if verify_session:
+                        if allowed_ip and allowed_ip != client_ip:
+                            return {"ok": False, "reason": "تم فتح الأداة من جهاز آخر. لا يمكن استخدام نفس المفتاح من عدة أجهزة."}
+                    else:
+                        if allowed_ip and allowed_ip != client_ip:
+                            return {"ok": False, "reason": "هذا المفتاح مرتبط بجهاز آخر. تواصل مع المسؤول لإعادة التعيين."}
+                        elif not allowed_ip:
+                            update_url = f"{SUPABASE_URL}/rest/v1/subscriptions?id=eq.{sub_id}"
+                            update_data = {
+                                "allowed_ip": client_ip,
+                                "current_ip": client_ip,
+                                "last_login_at": datetime.now().isoformat()
+                            }
+                            requests.patch(update_url, headers=headers, json=update_data, timeout=10)
+                        else:
+                            update_url = f"{SUPABASE_URL}/rest/v1/subscriptions?id=eq.{sub_id}"
+                            update_data = {
+                                "current_ip": client_ip,
+                                "last_login_at": datetime.now().isoformat()
+                            }
+                            requests.patch(update_url, headers=headers, json=update_data, timeout=10)
+                    
+                    return {
+                        "ok": True,
+                        "user_name": sub.get("user_name") or sub.get("user_email", "مستخدم"),
+                        "expires_at": expires_at,
+                        "allowed_ip": allowed_ip or client_ip
+                    }
+                else:
+                    return {"ok": False, "reason": "مفتاح غير صالح"}
+            else:
+                return {"ok": False, "reason": "خطأ في التحقق"}
+        except Exception as e:
+            print(f"[!] License check error: {e}")
+            return {"ok": False, "reason": "خطأ في الاتصال"}
+    
+    return {
+        "ok": True,
+        "user_name": "مستخدم تجريبي",
+        "expires_at": (datetime.now() + timedelta(days=30)).isoformat(),
+        "allowed_ip": client_ip
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
